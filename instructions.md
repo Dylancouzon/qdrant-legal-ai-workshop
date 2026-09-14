@@ -1,175 +1,161 @@
-> **Approved Redesign (September 2026):** The user has authorized an agent-based workshop for mixed legal tech workers. The current build uses Qdrant and LangGraph with three progressive investigations: Missing Authority, Outdated Sources, and False Consensus. This supersedes the original two-challenge limit and evidence-only main experience. The main experience uses a live model when configured; an explicitly labeled evidence-only fallback remains available. The user also replaced student VMs with two complete participation paths: facilitator-led follow-along without setup, and optional repository clone with shared read-only Qdrant Cloud access or participant-owned ingestion. The revised schedule and participant experience appear in WORKSHOP.md. Preserve the original brief below as project history; apply its other requirements where compatible.
+# Build Brief: Qdrant Legal Retrieval Lab
 
-# Build Instructions: Fix the Search
+Instructions for the session that builds this workshop. The repo was stripped to `.git`, `.gitignore`, `.gitattributes`, and `.python-version` on 2026-09-13. The previous version is recoverable at commit `5962901`; its `data.py`, `engine.py`, and `evaluation.py` are worth reading for the corpus metadata design, which was the good part.
 
-## Your Task
+## The Event
 
-Build a complete, working workshop application in this repository. Implement and verify the experience; do not stop at a proposal or mockup. First inspect the repository and its instructions, reuse an appropriate existing stack, and preserve unrelated work. Make reasonable implementation decisions without repeatedly asking for confirmation. Document assumptions and any genuine blockers.
+"Chicago Workshop: Building AI Agents You Can Trust", https://luma.com/p6nyjn29. Hosted by The Superoptimal, The AI Collective, and Code & Coffee. An informal evening event with drinks. Other speakers cover voice agents in legal contexts and evaluation practice (Arize). Qdrant runs the hands-on lab.
 
-Create `outline.md` for the opening Qdrant introduction. **Only create an outline for this introduction. Do not create slides or a slide application.** The presenter will create the slides separately.
+Audience: engineers in high-stakes environments, legal engineers building legal products, and search and relevance teams. Mixed technical levels, no ML background assumed. Roughly 30 people with laptops.
 
-## Workshop Context
+Presenter: Dylan Couzon, DevRel at Qdrant. Dylan decides; the build session executes.
 
-- Audience: primarily legal tech engineers.
-- Duration: 60 minutes maximum, including the introduction and debrief.
-- Environment: Hackersquad provides each attendee with a VM through a link. Qdrant can be preinstalled, collections preloaded, and the IDE includes an AI coding assistant.
-- Attendees should not need to install dependencies, obtain credentials, load data, or manually write code during the workshop.
-- They may use the IDE assistant to inspect and modify the implementation. The exercise is about diagnosis and evidence, not syntax.
-- The preceding talk asks how organizations can turn human judgment into executable work, and what must be true before trusting AI inside that work.
-- This workshop narrows that question to retrieval: does the assistant receive the right evidence?
+## The Format
 
-## Concept and Scope
-
-Title: **Fix the Search**.
-
-The participant-facing explanation should fit in this paragraph:
-
-> This assistant gives plausible answers, but sometimes retrieves the wrong evidence. Find out why, fix its search, and show that the fix works on another question. You can use the AI coding assistant for anything.
-
-Build one legal question-answering application and two challenges. Keep the experience lightweight and understandable within a few minutes. Participants may work individually or in pairs.
-
-Do not add assigned roles, leaderboards, tokens, submission budgets, approval ceremonies, elaborate scoring, or a third challenge. Do not build a notebook exercise. Do not require a chat-based agent to navigate the workshop itself.
-
-## Schedule
-
-| Minutes | Activity |
+| Minutes | What Happens |
 | --- | --- |
-| 0–10 | Qdrant introduction using a concrete contract question |
-| 10–15 | Open the environment and demonstrate evidence inspection |
-| 15–30 | Challenge one: find the right contract |
-| 30–45 | Challenge two: find the missing clause |
-| 45–53 | Reveal additional questions and test fixes |
-| 53–60 | Compare results and debrief |
+| 0-15 | Slides: vector search, the case, and the rules of the lab. Participants clone and connect while listening. |
+| 15-45 | The competition. Solo or in pairs. |
+| 45-55 | Scoring, leaderboard, and the reveal of the held-out questions. |
+| 55-60 | Debrief on at least one concrete failure per scored dimension. |
 
-## Participant Application
+## The Concept
 
-Provide a browser application, ready to open in the VM, with these core elements:
+A retrieval tuning competition on a legal corpus, and an evidence policy exercise, together. Both, deliberately. A team that only fixes technical defects should not be able to win, and a team that only reasons about legal applicability should not be able to win either.
 
-1. A short challenge brief and a prefilled question.
-2. The assistant's answer with inspectable citations.
-3. The retrieved passages in retrieval order, showing source text and useful metadata, including matter/customer, document identifier, and section identifier.
-4. A **Test My Fix** button that runs a small evaluation set against the current retrieval implementation.
-5. An understandable before-and-after comparison of retrieved evidence and test results.
+Participants get a working but deliberately weak Qdrant retrieval setup. They edit exactly one file. They have a local web app where they ask questions, see the ranked passages, compare against the previous run, and read the playbook. They tune for 30 minutes. At the end a held-out question set produces a score.
 
-Explain failures in terms of evidence: wrong matter, missing decisive passage, or a previously passing question that now fails. A green badge alone is insufficient. Distinguish retrieval scores from confidence or correctness; never present similarity as a probability that an answer is true.
+## Settled Decisions
 
-Keep the interface simple. Put technical detail behind optional expansion. Provide loading, empty-result, and service-error states. Make long passages and citations readable without crowding the page.
+**Qdrant Cloud collection, preloaded, for everyone.** No local ingest, no Docker, no re-ingest. This gives a uniform starting line, removes the largest source of night-of failure, allows a bigger corpus, and collapses setup to installing the client and connecting. Dylan will put a read-only, collection-scoped API key in the repo. Confirm it is scoped to read and to that collection only.
 
-Participants should modify a small, clearly documented retrieval module or configuration using the IDE assistant. They should not have to navigate a large codebase. Include plain-language guidance on where the search behavior lives, but do not expose the solution in the initial challenge brief.
+**Precompute several representations server-side.** The collection holds six: a weak default dense vector, a second dense vector from the same model over document title plus heading plus text, a stronger dense vector, BM25, SPLADE++, and a ColBERT-style multivector. The second dense vector was added after measurement showed that what you embed is a larger lever than which model you use, and it is the difference between 20 and 23 solved questions when combined with fusion weights. Every "upgrade the model" move becomes a one-line query change instead of a re-ingest. This is what makes the Cloud collection strictly better than local.
 
-Keep the answer model and prompt constant during the exercises so that retrieval changes can be observed. Challenge two should retain the correct matter scoping learned in challenge one. Provide independent checkpoints so anyone who falls behind can start challenge two with matter scoping already fixed.
+**Ship ColBERT without telling anyone.** The starter code uses only the weak dense vector and the sparse vector. Late interaction is a large score jump available to anyone who inspects what the collection actually contains. It must be discoverable, not guessable: the app diagnostics panel shows which vectors are in use against the total present, and the editable file's header says the collection may hold more than the starter code uses. That is the only hint.
 
-## Challenge One: Find the Right Contract
+**One editable file.** Query-time Qdrant code only. Treat it as an interface choice, not a security boundary. Define a stable function signature, validate submissions before the deadline rather than disqualifying at scoring time, and hash the other files as a courtesy check, not as an integrity claim.
 
-Initial symptom: a convincing answer cites a different customer's agreement.
+**The competition is honor-based and low stakes. Say so.** Do not build organizer-side scoring infrastructure for a 60-minute evening event. Encrypt the held-out questions in the repo from day one so a coding agent cannot read them, announce the password at minute 45, and let people run the scorer locally and call out their number. Do not describe this as strong anti-cheat, because it is not.
 
-Example mission card:
+**The playbook lives in the web app, not in the repo.** The applicability rules render in the app UI only. A coding agent cannot read them unless the human reads them and pastes them in. This is enforcement rather than etiquette, and it puts the legal reading in the person.
 
-> The assistant says termination requires 60 days' notice. The account team thinks that's wrong. Find the evidence, repair the search, and check that another customer's question still works.
+**A small labeled calibration set exists.** This reverses an earlier position. Withholding all feedback does not force legal reasoning, it just removes the ability to tell whether a change helped. The specific failure to avoid: someone deletes the `status == "current"` filter, sees superseded clauses appear, cannot tell whether that is better, and reverts the correct change. Ship enough labeled cases to teach the relevance rubric, and keep the final cases hidden.
 
-Required design:
+**Publish the scored dimensions, keep the questions hidden.** Participants know they will be measured on applicability, controlling evidence coverage, and ranking quality. They do not know the questions.
 
-- Use several synthetic customer agreements with similar language but meaningfully different notice periods or termination conditions.
-- The selected matter must be explicit application context, not something guessed from the question by a model.
-- The initial retrieval implementation fails to constrain results to that matter.
-- Author and test the corpus so the wrong-matter result occurs reliably with the actual retrieval stack. Do not fabricate search results in the UI.
-- The intended repair applies the appropriate Qdrant payload filter to every relevant retrieval path.
-- Tests must include another customer so hardcoding the first customer's identifier does not pass.
-- Clearly explain in facilitator materials that this is an intentionally flawed training search configuration. It is not a production authorization design.
+**The chatbot stays out of the tuning loop.** Fluent text conceals bad evidence, which is the lesson. Use a generated brief in the opening demo, then keep the main loop showing passages. Reveal generated answers after a team commits its evidence judgment.
 
-Learning outcome: semantic relevance does not establish whether evidence is applicable to the current matter.
+**The agent does not retry.** The demo agent makes exactly one retrieval call through the participant's `retrieve()`, with no rephrasing, no query rewriting, and no second attempt. That makes single-shot retrieval quality a faithful measure of the end result, keeps scoring deterministic and free of model cost, and preserves the rule that the chatbot stays out of the tuning loop. Query rewriting is therefore not a participant lever; participants tune Qdrant.
 
-## Challenge Two: Find the Missing Clause
+**OpenAI access:** a dedicated project key with a hard budget cap, distributed by QR code, revoked at the end. Retrieval and scoring must work without it.
 
-Initial symptom: search retrieves general termination language but misses a decisive clause referenced by a precise identifier.
+## Open Items
 
-Required design:
+**The knob menu.** Build the levers, then play the workshop ourselves and balance. The target mix is silent bugs, tuning, and discoverable improvements, where no single category is sufficient to win. Codex argued for cutting the scored track to three interventions because breadth crowds out understanding in 30 minutes; treat that as a hypothesis to test during balancing, not a decision.
 
-- Start with matter filtering working.
-- Include a specific section, clause, or exhibit identifier whose passage changes the answer under the supplied fictional rules.
-- Include both identifier-heavy questions and questions phrased in natural-language paraphrases.
-- Allow participants to implement or compare dense semantic retrieval, lexical/sparse retrieval, and hybrid retrieval in Qdrant.
-- Use real dense and sparse representations and Qdrant's supported query/fusion facilities. Verify current APIs against official documentation before implementation.
-- Make the dataset demonstrate a real, reproducible retrieval failure and improvement. Do not assume hybrid retrieval will automatically outperform every baseline; measure and adjust the exercise honestly.
-- Test both identifier-heavy and paraphrased questions so fixing one example is insufficient.
-- Keep candidate counts and evaluation criteria explicit and consistent when comparing approaches.
+**Corpus size.** Start at hundreds of passages, not thousands. A small set of convincing near-misses is harder and more instructive than a large pile of unrelated text. Grow only if a pilot shows the extra material produces useful failures.
 
-Learning outcome: different query types need different retrieval signals, and a change must be tested beyond the motivating example.
+**Where the difficulty floor sits.** The first meaningful win should be reachable in about five minutes, then the curve should steepen. Tune after building.
 
-## Data and Evaluation
+**Held-out set size.** Start at 30 to 40 questions. Below 20 the gap between second and fifth place is noise.
 
-Use entirely synthetic documents, fictional customers, and a short supplied company playbook. No external legal research or specialist legal knowledge should be necessary. Clearly identify the material as fictional training data.
+## The Corpus
 
-Choose a small corpus large enough to create credible competing results but small enough for attendees to inspect. Include stable document and passage IDs and explicit metadata. Ensure source text unambiguously supports the expected conclusions.
+Build the evidence relationships first. They are the curriculum; passage count is a scale choice.
 
-Create a compact, versioned evaluation set. For each case record the question, matter context, required evidence IDs, prohibited evidence where relevant, and an explanation of why the evidence matters.
+The trap to avoid: assigning invented dates and supersession chains to real contract text does not make the underlying language support those relationships. If the right answer is right only because a metadata field says so, participants learn to obey our database instead of reading evidence.
 
-Use deterministic source-level checks as the main pass criteria, including required evidence within the context supplied to the answer model and exclusion of wrong-matter evidence. Do not rely solely on an LLM judge or exact matching of generated prose. Label retrieval success honestly; it does not certify every generated answer.
+Build order:
 
-Save the initial baseline and display comparisons against the current implementation. Include at least one additional case per challenge for the final reveal. These may be facilitator-controlled rather than initially visible in the participant interface. They are learning exercises, not secure examinations; no anti-cheating infrastructure is needed.
+1. Author three to five explicitly fictional matters.
+2. Write the amendment, dependency, and applicability histories so the language itself carries the relationship. An amendment must actually read as superseding the clause it supersedes.
+3. Bring in authentic excerpts (CUAD is the candidate: 510 real commercial contracts, clause-level spans, CC BY 4.0) only where they stay coherent with the constructed history. Never imply an invented amendment history describes the real agreement.
+4. Add unrelated passages and misleading memo families only after the core cases work.
+5. Label everything as fictional workshop material.
 
-Verify that:
+Three case constructions carry the domain weight:
 
-- Each intended baseline failure occurs reproducibly.
-- The intended solution improves the relevant cases.
-- Hardcoding a customer or returning only the motivating passage does not satisfy the suite.
-- Challenge two's retrieval changes preserve matter filtering.
-- Failed dependencies and missing credentials are reported as errors, never successful evaluations.
+**Historical applicability.** A later amendment sits near an earlier governing provision. The question is dated before the amendment applies. A recency boost now has an observable failure case.
 
-## Qdrant and VM Preparation
+**Evidence dependency.** The answer needs both an operative clause and a referenced definition or exception. One attractive passage is not enough.
 
-Use a real Qdrant instance and actual queries. Do not substitute an in-memory imitation or canned retrieval results.
+**Authority versus repetition.** A duplicated memo family sits alongside the instrument it discusses. Deduplicating by identifier alone should not solve it; recognizing the authority relationship should.
 
-Provide organizer-facing setup that installs or checks dependencies, prepares embeddings, loads and indexes the collection, and starts the application. Make preparation repeatable and seeding idempotent. Pin compatible dependencies. Follow existing repository conventions where suitable.
+Use matched counterfactual pairs: near-identical wording, different date or matter, different correct evidence.
 
-Keep preparation outside attendee time. Support preloaded collections or a reproducible snapshot/restore workflow appropriate to the selected Qdrant version. Do not assume a specific Hackersquad API, domain, port-routing scheme, or deployment interface that has not been provided. Document VM requirements, ports, environment variables, start commands, and readiness checks for the organizer.
+Before building the competition, validate about a dozen representative questions. For each, write down the required evidence, the tempting wrong evidence, the applicability rationale, and a plausible allowed improvement. If two reviewers cannot agree on those judgments, the corpus is not ready.
 
-Prefer practical CPU-compatible defaults. If embedding models need downloads, cache them during VM preparation. Keep any provider credentials on the server and out of source control, browser bundles, logs, and participant documentation.
+## Scoring
 
-If live answer generation requires organizer-supplied credentials, provide a clearly labeled extractive evidence-only fallback for development and outages. Never present canned or extracted text as live model generation. Retrieval and evaluation must remain functional without the answer provider.
+Three published dimensions:
 
-Provide easy reset and checkpoint commands for the workshop exercise state. Scope resets to workshop files and data, preserve participant changes where feasible, and avoid broad destructive repository commands.
+1. **Applicability.** Did the returned evidence respect the question's matter and date requirements?
+2. **Controlling evidence coverage.** Was the controlling source, or the complete evidence bundle, retrieved?
+3. **Ranking quality.** How well were the remaining graded results ordered, accounting for duplicated source families?
 
-## Required Files and Documentation
+Rank on controlling evidence first, ranking quality second. Display both.
 
-Adapt implementation filenames to the repository, but deliver these Markdown files:
+Define relevance at the level the exercise cares about, and write it down before annotating: which passages count as evidence from a controlling document, whether one of two necessary provisions earns partial credit, how duplicate memo copies contribute, and how genuinely alternative evidence is labeled. Annotation choices will otherwise dominate the apparent effect of tuning.
 
-### `outline.md`
+A superseded document is essential to a historical question. "Old material returned" is not inherently a failure, and the scorer must encode that.
 
-A concise outline for the presenter's 10-minute Qdrant introduction, including suggested timing, key points, and a proposed demonstration. No slides.
+Recognize more than one winner: largest improvement, strongest applicability, and best failure explanation. Require a short failure report at submission (one defensible improvement, one remaining failure, the evidence for both) and reward it separately.
 
-Cover:
+## Levers and Planted Bugs
 
-- Bridge from the prior talk: trustworthy participation depends in part on receiving the right evidence.
-- Opening question: “Can this customer terminate early?” Show two relevant-looking passages from different agreements.
-- The path: question → Qdrant retrieves evidence → AI answers.
-- What Qdrant solves: search by meaning, lexical signals, and metadata constraints combined to select relevant evidence.
-- Why these choices matter for legal applications, with examples rather than sales claims.
-- Boundary: Qdrant executes retrieval; the application supplies metadata and policy. Qdrant does not determine legal authority or guarantee answer correctness.
-- Transition to the two challenges without revealing their exact repairs.
+Soft selection. Finalize after the corpus exists and we have measured which ones actually move the score.
 
-Include official Qdrant documentation links supporting technical statements. Avoid unsourced performance claims, competitive comparisons, and a broad product feature tour.
+**Silent bugs:**
 
-### `PARTICIPANT.md`
+- `avg_len` left at a document-length default on short clause passages. BM25 and miniCOIL do not compute this server-side, and the default misweights short fields. Little known, no error, real effect. This is the best candidate we have.
+- Sparse vector created without the IDF modifier, so boilerplate scores as highly as distinctive terms.
+- Dense vectors queried against the wrong distance metric for how they were stored.
+- Query embedded without the model's required prefix, where the chosen model needs one.
+- `lte` instead of `lt` on the exclusive end of the effective-date interval. Only visible on questions dated exactly at a changeover.
+- `status == "current"` in a `must` clause. Looks obviously correct to an engineer and is legally wrong for historical questions. The naive fix makes the score worse on exactly the questions that matter.
+- Candidate limit applied before fusion rather than inside the prefetch, so hybrid fuses two tiny pools.
 
-A short guide containing the one-paragraph premise, how to open the application, how to inspect evidence, where retrieval behavior lives, how to use the IDE assistant, and how to run tests. Ask participants to state a brief hypothesis before changing anything and inspect the result afterward. Keep this conversational, not a form or additional approval step. Do not include full solutions.
+Verify each one empirically on the real corpus before counting it as headroom. Several of these depend on the models finally chosen.
 
-### `FACILITATOR.md`
+**Tuning and improvements:** payload filters for matter and effective-date interval, fusion choice and RRF `k` and per-prefetch weights, switching to the stronger dense vector, FormulaQuery recency decay, miniCOIL, and the undisclosed ColBERT rescore.
 
-The 60-minute run of show, opening trust vote, both mission briefs, graduated hints, expected diagnoses, final-reveal procedure, debrief points, and recovery steps for participants who fall behind. Include a short readiness checklist and a fallback if the answer provider is unavailable.
+## Verified Qdrant Facts
 
-### `SOLUTIONS.md`
+Checked against the live skills registry and docs on 2026-09-13.
 
-Working reference repairs, explanations of why they help, expected evaluation outcomes, and common inadequate fixes. Keep this separate from the main participant path; it need not be access-controlled. Provide usable reference checkpoints or patches as appropriate.
+Multiple named dense vectors of different dimensions coexist in one collection, and a query selects one with `using`. Multivectors are configured with `models.MultiVectorConfig(comparator=models.MultiVectorComparator.MAX_SIM)`; MaxSim returns one combined score per point. The late-interaction rescore pattern is a `prefetch` for broad candidates followed by the multivector as the main `query` with `using="colbert"`. Fusion offers RRF, with tunable `k` and per-prefetch weights, and DBSF, which normalizes score distributions using three-sigma endpoints. `FormulaQuery` supports `ExpDecayExpression` over a `DatetimeKeyExpression` on a payload date field; calibrate the decay weight against the scale of the fused score, because decay returns values in zero to one while RRF scores are much smaller.
 
-### `README.md`
+Cloud Inference embeds both stored documents and queries through the same interface, enabled with `cloud_inference=True` on the client, and handles query and passage prefixes automatically. Dense and image models are documented; the model list lives in the Inference tab of the Cluster Detail page in the Cloud Console, not in the docs.
 
-Organizer setup and operation, architecture at a useful level, VM preparation, environment variables, test commands, reset/checkpoint instructions, and known limitations. Update rather than overwrite unrelated existing documentation.
+Sparse model options are BM25 (cross-domain, long text, needs per-language tokenization, stemming, and stopwords), BM42 (short chunks, English only, no longer maintained), miniCOIL (adds contextual word meaning, English only, needs FastEmbed), and SPLADE++ (term expansion, heavier).
 
-## Verification and Completion
+Two constraints worth respecting. Co-locating large multivectors with dense vectors degrades all queries at scale, with reports of 13 seconds dropping to 2 after removing ColBERT at millions of points; put large vectors on disk. Our corpus is hundreds to low thousands of passages, so this will not bite, but do not let the corpus grow without rechecking. On Qdrant 1.18 and earlier, IDF statistics are computed over the whole shard, which distorts scoring in multi-tenant collections; 1.19 and later support per-tenant IDF. This matters if matters are modeled as tenants.
 
-Run meaningful automated checks for seeding, retrieval scoping, evaluation criteria, and both reference solutions. Exercise the full application against real Qdrant. If browser tools are available, verify the participant flow visually, including citations, comparisons, and error states.
+**To confirm during the build**, because the fetched docs did not show them: the exact syntax for the sparse IDF modifier at collection creation, and whether Cloud Inference covers sparse and late-interaction models or only dense and image. If Cloud Inference does not cover sparse and ColBERT, those vectors must be computed at ingest time with FastEmbed, which is fine because ingest is ours, but query-side sparse and ColBERT embedding would then need a local model and that changes the setup story.
 
-Check that a fresh prepared environment opens in the deliberately flawed challenge-one baseline, rather than accidentally starting with the reference solutions applied. Confirm that restarting preserves the intended exercise state and that checkpoints work.
+## Build Order
 
-Do not deploy publicly or invent Hackersquad integration details. Deliver a runnable repository and clear VM handoff instructions. In your final response, report what you built, how to start it, what you verified, and any remaining organizer configuration. Be explicit about anything you could not test.
+Status as of 14 September 2026. Everything below is built and verified unless marked otherwise.
+
+1. Done. Corpus and evidence relationships, with thirty-seven questions adjudicated rather than the dozen planned. `workshop/corpus.py`, `workshop/validation.py`, `workshop/heldout.py`.
+2. Done. Ingest to Qdrant Cloud with six representations. Two of them, `dense_strong` and `splade`, are declared and wait on cluster billing. `workshop/ingest.py`, `workshop/clausebank.py`.
+3. Done. `workshop/lab.py`, one editable file with a stable `retrieve()` signature, and `workshop/bench.py --parity` proves the benchmark runs the same query.
+4. Done. `workshop/app.py`, standard library only, Qdrant palette, playbook panel, baseline comparison, and diagnostics that report execution rather than correctness.
+5. Done. Twelve calibration questions chosen by measured sensitivity, run by `workshop/run.py score`.
+6. Done. Seventeen held-out questions, kept out of the participant tree by `scripts/ship.py` rather than by encryption, and the scorer in `workshop/score.py`.
+7. Done. `CLAUDE.md` and `AGENTS.md`.
+8. Done. `FACILITATOR.md`, the run sheet with live commands and measured numbers.
+
+Not built, deliberately: organizer-side scoring infrastructure, a leaderboard, a submission flow, and encrypted questions. See `DECISIONS.md`.
+
+## Pre-Workshop Validation
+
+Define what "theoretical maximum" means before quoting a number. Perfect ranking under the labels, the best known implementation, and the best result reachable through the permitted interface are three different quantities. Pick one and name it.
+
+Run Claude Code and Codex unattended for 30 minutes under the one-file constraint and score them. If an agent alone reaches most of the achievable score, the domain knowledge is decorative and the task needs redesign. Note that this test is suggestive rather than conclusive: a low agent score can mean setup friction or unclear instructions rather than a well-designed exercise.
+
+Play the workshop ourselves, solo and in a pair, to balance the knob mix and find the difficulty floor.
+
+## Recorded Disagreement
+
+Codex recommended disclosing on the reveal slide that the held-out questions are weighted toward the intended solution. Dylan declined. The design proceeds without the disclosure. Recorded so the next session does not reopen it.

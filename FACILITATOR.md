@@ -1,94 +1,96 @@
-# Facilitate Fix the Search
+## Before anyone arrives
 
-Offer two complete paths: follow along with your projected live agent, or work in a local repository checkout. The room includes legal tech workers with different technical backgrounds. Everyone can inspect evidence and explain a hypothesis. Let the IDE assistant handle code; keep the conversation about what the investigation needs.
+```bash
+uv run python -m workshop.run preflight     # must end with "ready"
+uv run python scripts/ship.py ../qdrant-legal-lab   # rebuild the participant repo
+```
 
-## Ready Before People Arrive
+Check the Inference tab in the Cloud Console still lists the models. Have the repo URL on a slide and on a card at each table, because typing a URL from a slide in a dark bar is where the first five minutes go.
 
-- Complete [organizer preparation](README.md), including a live answer model. Rehearse the projected application and the optional clone-and-connect path.
-- Run `uv run --frozen --env-file .env python -m workshop.cli verify` against real Qdrant. Then run a live question and inspect its cited answer and activity trace. Deterministic retrieval tests alone don't verify live generation.
-- Restore `uv run --frozen --env-file .env python -m workshop.cli checkpoint baseline` and run `uv run --frozen --env-file .env python -m workshop.cli reveal off`. Confirm initial evidence, **Test My Fix**, citations, and comparisons.
-- Confirm your prepared collection and live model. If offering shared Qdrant Cloud access, provide only an appropriately collection-scoped read-only credential. Keep admin and model-provider keys private. Have the recovery commands ready.
-- Know how to select the explicitly labeled evidence-only fallback. A failed model request isn't a successful investigation.
+## 0 to 15, while they clone
 
-## The 60-Minute Run of Show
+Say the setup in three sentences. A law firm keeps every client's contracts in one store. Someone asks a dated question about one client. The retrieval they have been given works, and it is wrong in ways it will never tell them.
 
-| Minutes | Lead the Room | Watch For |
-| --- | --- | --- |
-| 0–8 | Follow [the opening outline](outline.md). Take the initial trust vote before opening sources. | Fluent language earns trust before anyone checks applicability. |
-| 8–15 | Orient both paths. Open the projected app; hands-on participants open their local app. Demonstrate one citation, source metadata, the agent's activity, and a baseline comparison. State a short hypothesis aloud. | Everyone can inspect a passage; hands-on participants can locate the small retrieval configuration. |
-| 15–25 | **Missing Authority.** Ask what document would change the answer. Offer one hint at a time. | A relevant summary substitutes for the controlling instrument. |
-| 25–35 | **Outdated Sources.** Preserve the first repair or use the `authority` checkpoint. Ask which source applies on the question's date. | Participants choose “newest” without checking effective intervals. |
-| 35–45 | **False Consensus.** Preserve prior repairs or use `freshness`. Compare independent records and repeated accounts. | More passages get mistaken for stronger corroboration. |
-| 45–55 | Reveal additional questions and test all three investigations. Discuss a changed conclusion or a remaining gap. | A fix for one example breaks another matter or historical question. |
-| 55–60 | Repeat the trust vote. Invite two short examples and close on the evidence needed for action. | A conditional conclusion can be better supported than a confident yes. |
+Then run the demo live. Do not describe it first.
 
-## Missing Authority
+```bash
+uv run python -m workshop.run answer \
+  "Meridian says we broke the contract and sent us a letter about it on 20 January 2026. How long do we have to put it right before they can walk away?" \
+  -m harbor -d 2026-01-20
+```
 
-> The assistant has relevant sources, but may have missed the instrument that controls the answer. Find the missing authority and repair how it obtains evidence.
+The agent says the passages do not settle the question. Under the answer is the list of what it was given, and one line reads `OTHER CLIENT`. That is the whole workshop in one screen: a fluent answer, built on another client's contract, from a system that reported no error.
 
-Expected diagnosis: the first retrieval is incomplete. Precise references and ordinary-language descriptions require different signals; following a retrieved document's reference can obtain decisive material outside the first result set.
+Say the three things they are measured on and stop talking:
 
-Graduated hints:
+- Did you retrieve the evidence that decides the question.
+- Did you order the rest sensibly.
+- Three counts that should be zero: another client's documents, documents outside their date window, and repeat copies of one memo.
 
-1. “Which instrument would you need before relying on this answer? Does a retrieved passage name it?”
-2. “Compare a precise reference with a paraphrase. Inspect both search results and follow-up activity.”
-3. “Inspect the search mode and reference-following behavior in `workshop/retrieval.py`. Keep matter scoping intact and test another question.”
+Point at the playbook panel in the app and say it is the legal half and it is not in the repository. Then start the clock.
 
-Accept repairs based on measured results. Hybrid isn't automatically superior; participants should explain what it retrieved and why reference following mattered.
+## 15 to 45, the competition
 
-## Outdated Sources
+Solo or pairs. They edit `workshop/lab.py` and run `score`, or use the browser at `localhost:8000`.
 
-> The assistant found the source. Does that source apply on the date in the question?
+Expect the first score to read 3 or 4 of 12 with about 36 leaks. The first fix is worth roughly three questions and takes the leaks to zero. After that the curve steepens.
 
-In the projected app, and in each hands-on checkout, confirm the authority repair works or run `uv run --frozen --env-file .env python -m workshop.cli checkpoint authority`. Refresh and select investigation two.
+Walk the room. Two prompts that unstick people without giving anything away:
 
-Expected diagnosis: publication availability and effective intervals determine eligibility. A source published after the question date cannot supply contemporaneous evidence. A later document can be inapplicable to a historical question; an earlier document can remain correct for that date. “Newest wins” isn't the rule.
+- "Read the top five out loud. Whose contract is that?"
+- "Your score line says the code uses two of six representations. What are the other four?"
 
-1. “Compare the question date, effective dates, and document status.”
-2. “Trace the date through initial search and referenced-document retrieval. Do both paths apply the same rule?”
-3. “Inspect applicability filtering. Use the supplied metadata and playbook, then test a historical question as well as a current one.”
+If someone deletes everything marked superseded and their score drops, that is the best conversation in the room. Let them find it.
 
-The model may correctly resolve mixed old/current evidence in the flawed baseline. Don't claim every generated answer must be wrong: the failure is unreliable context. Conversely, a repaired context doesn't prevent a small model from misreading a condition. Inspect the evidence and its interpretation separately.
+## 45 to 55, scoring and the reveal
 
-The exercise uses explicit fictional rules. In practice, people must establish authoritative source relationships and applicable policy before encoding them. Qdrant executes those constraints; it doesn't decide their legal meaning.
+Run one question twice. First with the starter still in place.
 
-## False Consensus
+```bash
+uv run python -m workshop.run answer "Are we cleared to build with the new 8841-C connector?" \
+  -m atlas -d 2026-09-01
+```
 
-> Several passages support the answer. Are they independent evidence, and what might change the conclusion?
+Five results come back and all five have the same title. The agent says it cannot tell, because the memos point at documents it was never given. Stop and let the room read the five identical lines.
 
-Confirm the first two repairs work or run `uv run --frozen --env-file .env python -m workshop.cli checkpoint freshness`. Refresh and select investigation three.
+Now drop in a tuned `lab.py` and run the identical command. Same question, same agent, same model.
 
-Expected diagnosis: repeated accounts crowd out distinct sources, and a search aimed only at support misses competing evidence. Source sufficiency requires examining provenance and unresolved conditions, not counting passages.
+> No. You are not cleared to build with the 8841-C connector. Production requires a passing first-article inspection of 30 units and written confirmation from the buyer's quality engineer; the inspection failed, and no confirmation has issued.
 
-1. “Who originated each claim? Which passages repeat the same account?”
-2. “What search would test the preliminary conclusion? What source could challenge it?”
-3. “Inspect targeted countersearch, source deduplication, and the sufficiency check. Keep prior applicability constraints on every path.”
+It cites the Engineering Change Notice and the quality memorandum, and it says in terms that the line-readiness note does not override them. Nothing about the agent changed. The evidence changed.
 
-Countersearch retrieves candidate evidence for inspection; it doesn't prove a contradiction. Deduplication makes room for distinct sources; it doesn't establish credibility. The answer should retain unresolved conditions when the packet doesn't establish them.
+That is the whole argument of the evening, and it is worth saying out loud: the first answer was not a hallucination. The model behaved well both times. It was handed five copies of one opinion and it told you so.
 
-## Reveal and Compare
+Then three numbers, spoken rather than read off a table. The starter solves 13 of 29 and returns 90 passages belonging to other clients. Filtering by matter takes those 90 to zero. Everything after that, all thirty minutes of it, is worth another seven questions.
 
-At minute 45, run `uv run --frozen --env-file .env python -m workshop.cli reveal on` in the projected app checkout. Hands-on participants run the same command in their checkout, optionally using the IDE assistant. Refresh, select each investigation in turn, and run **Test My Fix**. CLI users need `--challenge 1`, `2`, or `3` and `--reveal`.
+The full ladder is below. Hand it out or put it on the last slide; do not read it aloud.
 
-The deterministic reference results are Missing Authority 0/3 → 3/3, Outdated Sources 1/3 → 3/3, and False Consensus 0/3 → 3/3, including reveal cases. A live brief is a separate artifact to inspect.
+| Change | Solved | Leaks | Stale | Dupes |
+| --- | --- | --- | --- | --- |
+| starter as shipped | 13/29 | 90 | 0 | 9 |
+| filter by matter | 17/29 | 0 | 0 | 11 |
+| stop filtering on status | 21/29 | 0 | 2 | 11 |
+| exclusive end date | 21/29 | 0 | 0 | 11 |
+| group by source family | 22/29 | 0 | 0 | 0 |
+| add the second dense vector | 23/29 | 0 | 0 | 0 |
+| tune the fusion weights | 24/29 | 0 | 0 | 0 |
 
-Ask: “Which required source entered the context? Which inapplicable source left? Did an independent record change the conclusion? What remains unproven?” Read the case explanation rather than only the pass count. These are learning questions, not a secure examination.
+Two of those rows do not move the solved count and still matter. The exclusive end date takes a real temporal violation to zero, and grouping takes nine duplicate slots to zero. A number that only moves a count is still a defect removed, and in a legal setting it is the count that gets you sued.
 
-## Recover Without Losing the Room
+Say what did not work, because that is the more useful half. ColBERT is in the collection and costs four solved questions here. MMR gets worse the more diversity you ask for. An authority prior over document type changes nothing once grouping is on. Every one of those was measured rather than assumed, and the log is in the repository.
 
-- **Behind:** join the projected investigation immediately, or use `checkpoint authority` for investigation two or `checkpoint freshness` for investigation three. Checkpoints back up the retrieval configuration before replacing it.
-- **Broken edit:** restore a checkpoint or copy the desired file from `.workshop/backups/` to `workshop/retrieval.py`. Don't reset the repository.
-- **Live model unavailable:** report the error and explicitly choose evidence-only mode. Discuss the real retrieved sources; do not describe deterministic planning or extracts as a live model run.
-- **Qdrant or embedding cache unavailable:** use the README readiness steps. Retrieval failures are errors, never passing evaluations. Discuss the local fictional packet while services recover.
-- **Reference demonstration:** use `checkpoint solution`. Before another group arrives, restore `checkpoint baseline` and `reveal off`.
+Held-out questions live in the organizer repository only, at `workshop/heldout.py`. Score each team's `lab.py` against them, or let people call out their calibration number and take it on trust. The event is honour-based and saying so out loud costs nothing.
 
-## Close with the Decision
+## 55 to 60, the debrief
 
-Choose two questions:
+One concrete failure per dimension, each one a real passage anyone can pull up.
 
-- “Which source changed what you could responsibly recommend?”
-- “What did the agent need to look for after its first search?”
-- “When did more evidence fail to mean better evidence?”
-- “What does this passing suite establish, and what still needs human judgment?”
+**Applicability.** Ask the cure-period question dated 20 January 2026. The correct answer is the original Section 11.1, which is marked superseded. Amendment No. 3 says so in its own words: a notice received before the effective date stays under the old clause. Anyone who filtered on `status == "operative"` threw the answer away and their score went up on every other question while doing it.
 
-The practical Qdrant connection: participants changed eligible sources and retrieval signals, obtained missing or competing records, and measured the resulting context. The graph organized the investigation; the evidence determined what the answer could support.
+**Controlling evidence.** Ask whether the 8841-C connector is cleared for production. Five internal memos say approved. The Engineering Change Notice says conditionally approved, and a quality memo records that the first article inspection failed. Five documents agreeing is one source repeated, and the two that decide it were below the fold.
+
+**Ranking.** Ask about the liability cap on a data breach. Section 13.1 states the cap and points at Section 1.14 for the carve-out that removes it. Retrieving one without the other produces a confident answer in the wrong direction. Nothing we tried gets both into the top five, which is the honest note to end on: the exercise has a ceiling, and it is where the interesting work starts.
+
+## Recognise more than one winner
+
+Largest improvement from the starter, strongest applicability, and best failure explanation. Ask each team for one defensible improvement, one remaining failure, and the evidence for both, and reward the third separately. The team that can explain why ColBERT made things worse has learned more than the team that scored highest.
