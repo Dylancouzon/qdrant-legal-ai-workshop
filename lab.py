@@ -87,9 +87,11 @@ def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
     groups = client.query_points_groups(
         collection,
         prefetch=prefetch,
-        # Unweighted on purpose. Weighting the dense signals above BM25 gained a
-        # question before the statistics were scoped, and costs three after it.
-        query=models.FusionQuery(fusion=models.Fusion.RRF),
+        # The document-context vector contributes one answer the other signals
+        # miss, but it is a weaker clause ranker. A quarter-weight keeps that
+        # recall gain while lifting ranking on both the calibration and held-out
+        # questions. Clause-level MiniLM and matter-scoped BM25 remain peers.
+        query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 0.25, 1.0])),
         query_filter=query_filter,
         # One hit per source family, so five forwarded copies of one memo cannot
         # fill the list. Worth six points and two questions.
