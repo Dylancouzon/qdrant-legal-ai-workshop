@@ -189,21 +189,20 @@ PAGE = """<title>Legal Retrieval Lab</title>
           <div class="field"><label for="d">As of</label><input type="date" id="d" value="%(today)s" /></div>
         </div>
         <div class="field"><textarea id="q" placeholder="Ask about this client's contracts"></textarea></div>
-        <p class="micro">Your own questions are never scored. The supplied cases are.</p>
+        <p class="micro">Your own questions are not scored.</p>
       </div>
       <div id="thread"></div>
       <div class="actions"><button id="go">Ask the Agent</button></div>
       <div id="out"></div>
       <div class="cta">
-        <span>One answer shows you what broke. All of them show you how much.</span>
         <button id="run">Run All %(count)s Cases</button>
       </div>
     </div>
     <div id="boardview" hidden>
       <div class="actions" style="margin:0 0 16px">
-        <button class="ghost" id="back">Back to Asking</button>
+        <button class="ghost" id="back">Back</button>
         <button id="rerun">Run Again</button>
-        <span class="micro" id="runnote">Open a case to read its chunks and ask the agent.</span>
+        <span class="micro" id="runnote">Open a case to read its chunks.</span>
       </div>
       <div id="cards"></div>
       <table id="board"></table>
@@ -213,7 +212,7 @@ PAGE = """<title>Legal Retrieval Lab</title>
   </section>
   <aside>
     <h2>Evidence Playbook</h2>
-    <p class="intro">What safe evidence looks like. These rules are the legal half of the exercise.</p>
+    <p class="intro">What safe evidence looks like.</p>
     %(rules)s
   </aside>
 </main>
@@ -228,7 +227,7 @@ let scores = null;
 /* ---------- the answer, then what it was built from ---------- */
 
 function bubble(s) {
-  if (s.running) return '<div class="msg bot"><span class="who">Agent</span><div class="answer">Reading the chunks...</div></div>';
+  if (s.running) return '<div class="msg bot"><span class="who">Agent</span><div class="answer">Answering...</div></div>';
   if (!s.agent) return '';
   if (s.agent.error) return `<div class="msg bot"><span class="who">Agent</span><div class="warn">${esc(s.agent.error)}</div></div>`;
   const marked = esc(s.agent.reply).replace(/\\[(\\d+)\\]/g, (m, n) =>
@@ -236,7 +235,7 @@ function bubble(s) {
   const warn = s.agent.invented.length
     ? `<div class="warn">Cites ${s.agent.invented.map(n => '[' + n + ']').join(', ')}, which was never retrieved.</div>`
     : '';
-  return `<div class="msg bot"><span class="who">Agent &middot; one call, no retries, only these chunks</span>
+  return `<div class="msg bot"><span class="who">Agent</span>
     <div class="answer">${marked}</div>${warn}</div>`;
 }
 
@@ -259,10 +258,8 @@ function chunks(s) {
 
 function evidence(s) {
   if (!s || !s.chunks) return '';
-  if (!s.chunks.length) return '<p class="empty">Nothing came back, so the agent had nothing to answer from.</p>';
-  const head = s.agent && !s.agent.error
-    ? 'The five chunks the answer was built from' : 'The five chunks retrieved';
-  return `<div class="evhead"><h3>${head}</h3></div>` + chunks(s);
+  if (!s.chunks.length) return '<p class="empty">Nothing came back.</p>';
+  return '<div class="evhead"><h3>Chunks returned</h3></div>' + chunks(s);
 }
 
 /* ---------- the ask view ---------- */
@@ -369,8 +366,8 @@ function board() {
     || CASES[a].matter_name.localeCompare(CASES[b].matter_name)
     || CASES[a].title.localeCompare(CASES[b].title));
   $('#board').innerHTML = header() + ids.map(row).join('') + totalRow();
-  $('#note').innerHTML = '<p class="micro">A case marked challenge is scored like the rest. '
-    + 'Nothing we have tried reaches its evidence, so the ceiling sits below 100.</p>';
+  $('#note').innerHTML = '<p class="micro">A challenge case is scored like the rest. '
+    + 'Nobody has reached its evidence yet.</p>';
 }
 
 function cards() {
@@ -378,9 +375,8 @@ function cards() {
   $('#cards').innerHTML = `<div class="scorecards">
     <div class="scorecard"><b>${scores.score}</b><span>Score out of 100</span></div>
     <div class="scorecard"><b>${scores.solved}/${scores.questions}</b><span>Cases Solved</span></div>
-  </div><p class="micro">The starter searches the whole collection, and approximate search
-  returns a slightly different set each run, so its score moves a point or two on its own.
-  Once you scope the search, the number is steady.</p>`;
+  </div><p class="micro">An unscoped search returns a slightly different set each run, so the
+  starter's score moves a point or two on its own.</p>`;
 }
 
 function paint(id) {
@@ -420,7 +416,7 @@ async function runAll(button) {
   const d = await (await fetch('/api/score')).json();
   clearInterval(timer);
   button.disabled = false;
-  $('#runnote').textContent = d.error || 'Open a case to read its chunks and ask the agent.';
+  $('#runnote').textContent = d.error || 'Open a case to read its chunks.';
   if (d.error) return;
   scores = d;
   $('#diag').textContent = d.diagnostics || '';
@@ -444,8 +440,7 @@ board();
 
 def diagnostics(qc, name):
     """Explain what the code executed, never whether the answers are right."""
-    return (f"Qdrant {qc.info().version}. {representations(qc, name)}. Execution only; "
-            f"it says nothing about whether the answers are right.")
+    return f"Qdrant {qc.info().version}. {representations(qc, name)}."
 
 
 CASES = {
@@ -599,7 +594,6 @@ def main():
     http.server.ThreadingHTTPServer.allow_reuse_address = True
     with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as server:
         print(f"Legal Retrieval Lab on http://localhost:{PORT}")
-        print("The Evidence Playbook is in the browser. Read it before tuning.")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

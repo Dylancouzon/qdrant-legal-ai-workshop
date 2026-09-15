@@ -4,17 +4,12 @@
     uv run python -m workshop.run answer "are we cleared to build?" -m atlas
     uv run python -m workshop.run score
 
-ask     Runs retrieve() from lab.py and prints the ranked chunks with the client
-        each one belongs to, so you can read the evidence the way a person would.
-answer  Sends those chunks to the answering agent, and marks the ones it cited.
-score   Runs retrieve() over the calibration cases and prints the score out of
-        100. Edit lab.py, run it again, watch it move.
+ask     Prints the ranked chunks, with the client each one belongs to.
+answer  Sends those chunks to the agent, and marks the ones it cited.
+score   Scores the fourteen cases out of 100.
 
 The question date defaults to today. A case carries its own date, because the
 date decides which version of a clause was in effect.
-
-The held-out questions are not in this repository. The calibration set teaches
-the rubric; it does not contain the questions you are scored on.
 """
 
 import argparse
@@ -54,8 +49,7 @@ def score(args):
     result = score_all(QUESTIONS, run)
     previous = remember(result)
     print(f"\ncalibration set, {len(QUESTIONS)} questions, top {K}. Two are marked "
-          f"challenge:\nnothing we have tried reaches their evidence, so the ceiling is "
-          f"below 100.\n")
+          f"challenge and nobody has reached their evidence yet.\n")
     head = (f"{'case':30} {'score':>5} {'was':>5} {'evidence found':>14} "
             f"{'graded ranking':>14} {'wrong client':>13} {'not in effect':>14} "
             f"{'duplicate':>9}")
@@ -81,9 +75,7 @@ def score(args):
         f"{result['temporal_violations']:14} {result['duplicate_families']:9}"
         f"   {result['solved']}/{result['questions']} solved"
     )
-    print(f"\nSCORE {result['score']} out of 100, the mean of the case scores. Each case is "
-          f"its evidence found and its graded ranking,\nover the share of the five slots a lawyer could "
-          f"use. One chunk from another client costs a fifth of that case.")
+    print(f"\nSCORE {result['score']} out of 100, the mean of the case scores.")
     print(
         "\nscore           this case out of 100: evidence found and graded ranking, over the\n"
         "                usable slots\n"
@@ -186,7 +178,7 @@ def answer(args):
 
     print(f"\n{reply}\n")
     print("-" * 72)
-    print("The agent saw only these chunks, in this order, and did not search again:")
+    print("The chunks the agent saw:")
     for i, p in enumerate(points, 1):
         d = p.payload
         mark = "*" if i in cited else " "
@@ -195,7 +187,7 @@ def answer(args):
               f"s.{d['section_id']}{stale}")
     print("  * cited in the answer above.")
     if invented:
-        print(f"  The answer cites {invented}, which was never retrieved. Do not trust it.")
+        print(f"  The answer cites {invented}, which was never retrieved.")
 
 
 def main():
