@@ -70,7 +70,7 @@ uv run python -m workshop.run answer \
 
 The agent says the chunks do not settle the question. Under the answer is the list of what it was given, with the client that owns each one. Three of the five belong to someone else, and one of those is Cedar Labs, another client of the same firm. That is the whole workshop in one screen: a fluent answer, built on other clients' contracts, from a system that reported no error.
 
-Say the three things they are measured on and stop talking: did you retrieve the evidence that decides the question, did you order the rest sensibly, and three counts that should be zero. Point at the playbook panel in the app, say it is the legal half and it is not in the repository, and start the clock.
+Say the three things they are measured on and stop talking: did you retrieve the evidence that decides the question, did you rank the rest sensibly, and three counts that should be zero. Point at the playbook panel in the app, say it is the legal half and it is not in the repository, and start the clock.
 
 ## 15 to 45, the competition
 

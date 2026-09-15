@@ -3,10 +3,10 @@
 coverage   Share of the controlling chunks that were retrieved. Two controlling
            chunks means retrieving one earns one half. Printed as a fraction,
            "1 of 2", and as Evidence Found.
-ranking    NDCG over graded results, reported as Order. A source family
-           contributes once, so the second and later copies of a memo take a
-           rank slot and earn nothing. It is not independent of coverage: a
-           missing controlling chunk lowers it too.
+ranking    NDCG over graded results at rank k, reported as Graded Ranking
+           (NDCG@5). A source family contributes once, so the second and later
+           copies of a memo take a rank slot and earn nothing. It is not
+           independent of coverage: a missing controlling chunk lowers it too.
 score      One number out of 100, from case_score below: coverage and ranking in
            the weights that function names, multiplied by the share of the k
            slots a lawyer could rely on.
@@ -118,7 +118,7 @@ def case_score(row, k=K):
 
     Every term is a share of something, so the units are comparable and a
     different retrieval that returns the same quality of evidence scores the
-    same. Quality is coverage first and ordering second, in the proportions the
+    same. Quality is coverage first and graded ranking second, in the proportions the
     brief sets out. Usable is the share of the k slots that a lawyer could rely
     on: a chunk from another client, a chunk that was not in effect, and a
     repeat copy of a document already returned each waste the slot it sits in.
@@ -198,7 +198,7 @@ def demo():
     assert leak["tenant_leaks"] == 1 and leak["temporal_violations"] == 0, leak
     assert score(x, ids("harbor-exh-d2", *memos))["duplicate_families"] == 3
 
-    # One number out of 100: coverage and ordering, over the usable share of the
+    # One number out of 100: coverage and graded ranking, over the usable share of the
     # result list. Every term is a share, so the units are comparable.
     full = {"coverage": 1.0, "ranking": 1.0, "wasted": 0}
     assert case_score(full) == 100, case_score(full)

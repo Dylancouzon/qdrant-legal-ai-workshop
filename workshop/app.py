@@ -49,10 +49,10 @@ CASE_TITLES = {
 }
 
 COLUMNS = [
-    ("Score", "This case out of 100: its evidence found and its order, over the share of the "
+    ("Score", "This case out of 100: its evidence found and its graded ranking, over the share of the "
               "five slots a lawyer could rely on."),
     ("Evidence Found", "Controlling chunks you retrieved. The largest part of the score."),
-    ("Order", "How well the graded results were ordered. It also falls when a controlling chunk is missing, so it moves with Evidence Found."),
+    ("Graded Ranking (NDCG@5)", "Normalized discounted cumulative gain over the graded results at rank 5. It falls when a controlling chunk is missing, so it moves with Evidence Found."),
     ("Wrong Client", "Chunks from another client's files."),
     ("Not in Effect", "This client's chunks that were not in effect on the question date."),
     ("Duplicate", "Rank slots taken by a repeat copy of a document you already returned."),

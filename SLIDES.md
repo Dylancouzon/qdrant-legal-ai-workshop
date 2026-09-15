@@ -195,15 +195,15 @@ Do not name the Qdrant implementation for any principle.
 
 ### On Screen
 
-**Score out of 100.** Evidence found and order, over the slots you can use.
+**Score out of 100.** Evidence found and graded ranking, over the slots you can use.
 
 1. **Evidence Found:** the controlling chunks you retrieved. This ranks you.
-2. **Order:** did the best evidence come first? Tiebreaker.
+2. **Graded Ranking (NDCG@5):** did the best evidence come first? Tiebreaker. It also falls when a controlling chunk is missing.
 3. **Drive these to zero:** Wrong Client, Not in Effect, Duplicate.
 
 ### Notes
 
-Each case scores `100 x (0.75 x evidence found + 0.25 x order)`, times the share of its five slots a lawyer could use. The run's score is the mean.
+Each case scores `100 x (0.75 x evidence found + 0.25 x graded ranking)`, times the share of its five slots a lawyer could use. The run's score is the mean.
 
 Every term is a share, so two retrievals that return the same quality of evidence score the same whatever produced them. One other-client chunk costs a fifth of that case, because it is a confidentiality failure rather than a slightly worse average.
 

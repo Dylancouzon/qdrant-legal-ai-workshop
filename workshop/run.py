@@ -54,8 +54,9 @@ def score(args):
     result = score_all(QUESTIONS, run)
     previous = remember(result)
     print(f"\ncalibration set, {len(QUESTIONS)} questions, top {K}\n")
-    head = (f"{'case':30} {'score':>5} {'was':>5} {'evidence found':>14} {'order':>6} "
-            f"{'wrong client':>13} {'not in effect':>14} {'duplicate':>10}")
+    head = (f"{'case':30} {'score':>5} {'was':>5} {'evidence found':>14} "
+            f"{'graded ranking':>14} {'wrong client':>13} {'not in effect':>14} "
+            f"{'duplicate':>9}")
     print(head + "  missing")
     print("-" * len(head))
     # "was" is this case in the previous run, from either the terminal or the
@@ -67,18 +68,18 @@ def score(args):
             f"{row['question_id']:30} {row['score']:5} "
             f"{'' if before is None or before == row['score'] else before:>5} "
             f"{row['found']:>7}/{row['controlling']:<6} "
-            f"{row['ranking']:6.2f} {row['tenant_leaks']:13} {row['temporal_violations']:14} "
-            f"{row['duplicate_families']:10}  {', '.join(row['missing']) or '-'}"
+            f"{row['ranking']:14.2f} {row['tenant_leaks']:13} {row['temporal_violations']:14} "
+            f"{row['duplicate_families']:9}  {', '.join(row['missing']) or '-'}"
         )
     print("-" * len(head))
     print(
         f"{'TOTAL':30} {result['score']:5} {'':5} {result['coverage'] * 100:13.0f}% "
-        f"{result['ranking']:6.2f} {result['tenant_leaks']:13} "
-        f"{result['temporal_violations']:14} {result['duplicate_families']:10}"
+        f"{result['ranking']:14.2f} {result['tenant_leaks']:13} "
+        f"{result['temporal_violations']:14} {result['duplicate_families']:9}"
         f"   {result['solved']}/{result['questions']} solved"
     )
     print(f"\nSCORE {result['score']} out of 100, the mean of the case scores. Each case is "
-          f"its evidence found and its order,\nover the share of the five slots a lawyer could "
+          f"its evidence found and its graded ranking,\nover the share of the five slots a lawyer could "
           f"use. One chunk from another client costs a fifth of that case.")
     probes = score_all(PROBES, run, k=K)
     print("\nshown, not scored. No configuration we have tried reaches the evidence for "
@@ -88,10 +89,12 @@ def score(args):
               f"{', '.join(row['missing'])}")
 
     print(
-        "\nscore           this case out of 100: evidence found and order, over the usable slots\n"
+        "\nscore           this case out of 100: evidence found and graded ranking, over the\n"
+        "                usable slots\n"
         "evidence found  controlling chunks you retrieved, the largest part of the score\n"
-        "order           how well the graded results were ordered. A missing controlling\n"
-        "                chunk lowers this too, so it moves with evidence found\n"
+        "graded ranking  NDCG at rank 5 over the graded results, shown as Graded Ranking\n"
+        "                (NDCG@5) in the browser. A missing controlling chunk lowers it too,\n"
+        "                so it moves with evidence found\n"
         "wrong client    chunks from another client's files\n"
         "not in effect   this client's chunks that were not in effect on the question date\n"
         "duplicate       rank slots taken by a repeat copy of a document you already returned\n"

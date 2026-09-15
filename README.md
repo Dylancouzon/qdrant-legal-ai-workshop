@@ -57,13 +57,13 @@ The board scores each case out of 100 and shows the five columns behind that num
 | Column | Meaning |
 | --- | --- |
 | Evidence Found | Controlling chunks you retrieved, out of the number the case needs. This ranks you first. |
-| Order | How well the graded results were ordered. It falls when a controlling chunk is missing too, so it moves with Evidence Found. Tiebreaker. |
+| Graded Ranking (NDCG@5) | Normalized discounted cumulative gain over the graded results at rank 5. It falls when a controlling chunk is missing too, so it moves with Evidence Found. Tiebreaker. |
 | Wrong Client | Chunks from another client's files. |
 | Not in Effect | This client's chunks that were not in effect on the question date. A clause that was later replaced is in effect for any question dated while it governed. |
 | Duplicate | Rank slots taken by a repeat copy of a document you already returned. |
 
 ```
-case score = 100 x (0.75 x evidence found + 0.25 x order) x the usable share of your five slots
+case score = 100 x (0.75 x evidence found + 0.25 x graded ranking) x the usable share of your five slots
 ```
 
 The run's score is the mean of the case scores. Every term is a share of something, so two retrievals that return evidence of the same quality score the same, whatever vectors, fusion, or filters produced it. A wrong client, a chunk that was not in effect, and a repeat copy each waste the slot it sits in: a case with all its evidence, ordered perfectly, and one wasted slot scores 80. A slot with two faults at once still costs one slot.

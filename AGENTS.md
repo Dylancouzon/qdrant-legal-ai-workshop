@@ -11,9 +11,9 @@ This is a timed retrieval-tuning exercise. A person has thirty minutes. Do not s
 Run `uv run python -m workshop.run score`. It prints, per case and in total:
 
 - `evidence found`, the controlling chunks retrieved out of the number the case needs. This is the primary score.
-- `order`, ordering quality of the graded results. Tiebreaker. It is not independent of coverage: a missing controlling chunk lowers it too.
+- `graded ranking`, NDCG at rank 5 over the graded results. Tiebreaker. It is not independent of coverage: a missing controlling chunk lowers it too.
 - `wrong client`, `not in effect`, `duplicate`, three counts of visible failures. Drive them to zero.
-- `score`, out of 100: `100 x (0.75 x evidence found + 0.25 x order)`, times the usable share of the five slots. Each visible failure wastes the slot it sits in, and a slot with two faults at once still costs one slot. The run's score is the mean of the case scores.
+- `score`, out of 100: `100 x (0.75 x evidence found + 0.25 x graded ranking)`, times the usable share of the five slots. Each visible failure wastes the slot it sits in, and a slot with two faults at once still costs one slot. The run's score is the mean of the case scores.
 
 Change one thing in `lab.py`, run `score`, keep the change if the numbers improve. That is the whole method.
 
