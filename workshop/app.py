@@ -165,9 +165,9 @@ aside .intro { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
 .principle { border-top: 1px solid var(--line); padding: 11px 0 7px; }
 .principle h3 { font-size: 14px; margin: 0 0 3px; }
 .principle > p { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
-details { padding: 4px 0; }
-summary { cursor: pointer; font-size: 13px; font-weight: 500; }
-details p { margin: 5px 0 4px 17px; color: var(--muted); font-size: 12.5px; }
+.rule { padding: 6px 0; }
+.rule b { font-size: 13px; font-weight: 500; display: block; }
+.rule p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
 .diag { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
         margin-top: 18px; padding-top: 12px; }
 .empty { color: var(--muted); font-size: 14px; }
@@ -214,7 +214,7 @@ PAGE = """<title>Legal Retrieval Lab</title>
   </section>
   <aside>
     <h2>Evidence Playbook</h2>
-    <p class="intro">What safe evidence looks like. Open a rule when a result makes it relevant.</p>
+    <p class="intro">What safe evidence looks like. These rules are the legal half of the exercise.</p>
     %(rules)s
   </aside>
 </main>
@@ -508,8 +508,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             '<section class="principle">'
             f"<h3>{html.escape(title)}</h3><p>{html.escape(summary)}</p>"
             + "".join(
-                f"<details><summary>{html.escape(rule_title)}</summary>"
-                f"<p>{html.escape(body)}</p></details>"
+                f'<div class="rule"><b>{html.escape(rule_title)}</b>'
+                f"<p>{html.escape(body)}</p></div>"
                 for rule_title, body in items
             )
             + "</section>"
