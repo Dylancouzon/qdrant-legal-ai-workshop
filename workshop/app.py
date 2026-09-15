@@ -13,8 +13,9 @@ read the evidence. The playbook panel is the other reason this exists, because
 the applicability rules render here and appear nowhere in the repository.
 
 Measurement is one click away, not first. The board scores the twelve supplied
-cases, carries the two challenges, and every row opens into the same two things.
-It re-reads lab.py on every run, so an edit lands without restarting the server.
+cases and carries the two challenges in the same list. A row opens on the
+client's question and the chunks that came back for it. It re-reads lab.py on
+every run, so an edit lands without restarting the server.
 """
 
 import datetime
@@ -152,7 +153,6 @@ td.full { color: var(--good); font-weight: 600; }
 td.none { color: var(--good); }
 td.bad { color: var(--amaranth); font-weight: 600; }
 td.detail { background: var(--wash); padding: 14px 16px 6px; }
-.section-head th { padding-top: 16px; font-size: 11px; }
 .scorecards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px;
   max-width: 340px; }
 .scorecard { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
@@ -208,6 +208,7 @@ PAGE = """<title>Legal Retrieval Lab</title>
       </div>
       <div id="cards"></div>
       <table id="board"></table>
+      <div id="note"></div>
     </div>
     <div class="diag" id="diag"></div>
   </section>
@@ -279,15 +280,19 @@ function picked() {
           counterparty: any ? any.counterparty : '', as_of: $('#d').value};
 }
 
+function asked(c) {
+  return `<div class="msg user">
+    <div class="parties">
+      <span><em>Client asking</em>${esc(c.matter_name)}</span>
+      <span><em>About their supplier</em>${esc(c.counterparty)}</span>
+      <span><em>As of</em>${esc(c.as_of)}</span>
+    </div>
+    <p>${esc(c.question)}</p></div>`;
+}
+
 function render() {
   if (!view) { $('#thread').innerHTML = ''; $('#out').innerHTML = ''; return; }
-  $('#thread').innerHTML = `<div class="msg user">
-    <div class="parties">
-      <span><em>Client asking</em>${esc(view.matter_name)}</span>
-      <span><em>About their supplier</em>${esc(view.counterparty)}</span>
-      <span><em>As of</em>${esc(view.as_of)}</span>
-    </div>
-    <p>${esc(view.question)}</p></div>` + bubble(view);
+  $('#thread').innerHTML = asked(view) + bubble(view);
   $('#out').innerHTML = view.error ? `<p class="empty">${esc(view.error)}</p>` : evidence(view);
   $('#go').textContent = view.agent ? 'Ask Again' : 'Ask the Agent';
   $('#go').disabled = !!view.running;
@@ -361,18 +366,20 @@ function totalRow() {
 
 function board() {
   const row = id => `<tr class="case" data-id="${id}"><td class="q">
-      <strong>${esc(CASES[id].title)}</strong>
+      <strong>${esc(CASES[id].title)}</strong>${
+        CASES[id].probe ? ' <span class="tag">challenge</span>' : ''}
       <small>${esc(CASES[id].matter_name)}, about ${esc(CASES[id].counterparty)}
       &middot; as of ${CASES[id].as_of}</small></td>
     ${CASES[id].probe ? probeCells(id) : cells(id)}</tr>
     <tr class="detail-row" data-for="${id}" hidden><td class="detail" colspan="7"></td></tr>`;
-  const ids = Object.keys(CASES);
-  $('#board').innerHTML = header() + ids.filter(id => !CASES[id].probe).map(row).join('')
-    + totalRow()
-    + '<tr class="section-head"><th colspan="7">Challenge &middot; nothing we tried reaches the '
-    + 'evidence for these two, so they are shown and never scored. Solve one and the count '
-    + 'turns.</th></tr>'
-    + ids.filter(id => CASES[id].probe).map(row).join('');
+  // One list, the client's cases together. A challenge sits with its siblings
+  // rather than in a section of its own.
+  const ids = Object.keys(CASES).sort((a, b) =>
+    CASES[a].matter_name.localeCompare(CASES[b].matter_name)
+    || CASES[a].title.localeCompare(CASES[b].title));
+  $('#board').innerHTML = header() + ids.map(row).join('') + totalRow();
+  $('#note').innerHTML = '<p class="micro">A case marked challenge is never scored. '
+    + 'Nothing we tried reaches its evidence.</p>';
 }
 
 function cards() {
@@ -390,9 +397,7 @@ function paint(id) {
   if (!cell) return;
   const s = state[id] || {};
   cell.innerHTML = s.error ? `<p class="empty">${esc(s.error)}</p>`
-    : (s.chunks ? bubble(s) + evidence(s)
-        + `<div class="actions" style="margin:0 0 12px"><button class="ghost" data-ask="${id}" ${
-            s.running ? 'disabled' : ''}>${s.agent ? 'Ask Again' : 'Ask the Agent'}</button></div>`
+    : (s.chunks ? asked(CASES[id]) + evidence(s)
       : '<p class="empty">Retrieving...</p>');
 }
 
@@ -405,18 +410,7 @@ async function load(id) {
   paint(id);
 }
 
-async function askCase(id) {
-  state[id].running = true;
-  paint(id);
-  const d = await (await fetch('/api/ask?answer=1&case=' + encodeURIComponent(id))).json();
-  state[id].running = false;
-  state[id].agent = d.error ? {error: d.error} : d.agent;
-  paint(id);
-}
-
 document.addEventListener('click', e => {
-  const asker = e.target.closest('[data-ask]');
-  if (asker) return askCase(asker.dataset.ask);
   const row = e.target.closest('tr.case');
   if (!row) return;
   const id = row.dataset.id;
@@ -525,8 +519,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             f'<option value="{k}">{v["name"]}</option>' for k, v in MATTERS.items()
         )
         cases = "".join(
-            f'<option value="{html.escape(qid)}">{html.escape(case["title"])}</option>'
-            for qid, case in CASES.items() if not case["probe"]
+            f'<option value="{html.escape(qid)}">{html.escape(case["title"])}'
+            f'{" (challenge)" if case["probe"] else ""}</option>'
+            for qid, case in CASES.items()
         )
         return (PAGE % {
             "style": STYLE,

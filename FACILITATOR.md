@@ -76,9 +76,9 @@ Say the three things they are measured on and stop talking: did you retrieve the
 
 Solo or pairs. They edit `lab.py`, which sits at the top of the repository on its own, and run `score` or use the browser at `localhost:8000`.
 
-The browser opens on the agent. A question goes in, the answer comes out, and the chunks it was built from sit underneath, each stating its client and its dates. The board reports the same five columns as `run score`. It says how many slots a case wasted and never which chunk wasted them, so a case that found everything in perfect order and still scores 60 sends a team to read its five chunks.
+The browser opens on the agent. A question goes in, the answer comes out, and the chunks it was built from sit underneath, each stating its client and its dates. A row opens on the client's question and the five chunks that came back for it. The board reports the same five columns as `run score`. It says how many slots a case wasted and never which chunk wasted them, so a case that found everything in perfect order and still scores 60 sends a team to read its five chunks.
 
-The two challenge cases sit at the bottom of the same table. Nothing we tried reaches their evidence, so they are never scored. They are there because a team may find a route we did not.
+Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, so they are never scored. They are there because a team may find a route we did not.
 
 Expect the first run to read 3 or 4 of 12, with 34 to 37 chunks from the wrong client, and a score between 11 and 16. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a point or two apart. The matter filter clears every wrong-client chunk and takes the calibration score to 46 or 47, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens.
 
@@ -86,7 +86,7 @@ Walk the room. Prompts that unstick people without giving anything away:
 
 - "Read the top five out loud. Whose contract is that?"
 - "That case found every controlling chunk, in the right order, and scores 60. Open it and tell me where the other 40 went."
-- "Open the case and ask the agent. Does the answer say what you would sign your name to?"
+- "Pick that case at the top of the page and ask the agent. Does the answer say what you would sign your name to?"
 - "Your score line says the code uses two of six representations. What are the other four, and which of them helps?"
 
 For teams near the top: "This cluster runs Qdrant 1.19. Should BM25 decide that a word is rare across every client, or inside this client's matter?"

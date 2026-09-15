@@ -6,6 +6,8 @@ Replace `[REPO URL]` before presenting. Do not show anything after "Stop and Com
 
 Timing: 15 minutes opening, 30 minutes lab, 15 minutes reveal and debrief.
 
+Repo URL: https://github.com/qdrant-labs/qdrant-legal-lab
+
 ---
 
 # Welcome to the Legal Retrieval Lab
@@ -31,11 +33,9 @@ Ask everyone to start cloning while you keep going.
 ### On Screen
 
 ```bash
-git clone [REPO URL]
-cd qdrant-legal-lab
-uv sync
-uv run python -m workshop.setup
+git clone https://github.com/qdrant-labs/qdrant-legal-lab
 ```
+
 
 ### Notes
 
