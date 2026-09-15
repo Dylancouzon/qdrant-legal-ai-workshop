@@ -28,22 +28,20 @@ LIMIT = 5
 def build_filter(matter_id, as_of):
     return models.Filter(
         must=[
-            # The largest single change, worth 64 points: without it another
-            # client's contracts answer the question, which is the confidentiality
-            # failure the whole exercise is built around.
+            # Keep every search inside the client's matter.
             models.FieldCondition(
-                key="matter_id", match=models.MatchValue(value=matter_id)
+                key="matter_id",
+                match=models.MatchValue(value=matter_id),
             ),
-            # The starter filtered status == "operative", which reads as obviously
-            # correct and throws away every historical answer. Dropping it is
-            # worth 15 points and six questions.
+            # A superseded clause can still govern a historical question, so
+            # filter on its effective window rather than its current status.
             models.FieldCondition(
-                key="effective_from", range=models.DatetimeRange(lte=as_of)
+                key="effective_from",
+                range=models.DatetimeRange(lte=as_of),
             ),
-            # gt, not gte: a clause replaced on 1 April does not govern on 1 April.
-            # Worth two points, and it clears three chunks that were not in effect.
             models.FieldCondition(
-                key="effective_to", range=models.DatetimeRange(gt=as_of)
+                key="effective_to",
+                range=models.DatetimeRange(gt=as_of),
             ),
         ]
     )
@@ -52,49 +50,52 @@ def build_filter(matter_id, as_of):
 def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
     query_filter = build_filter(matter_id, as_of)
 
-    # Qdrant 1.19 computes BM25 rarity inside this client's matter instead of
-    # across every client in the shard. Worth four points and three questions.
-    idf = models.SearchParams(
+    # Compute BM25 rarity inside this matter, not across every client.
+    bm25_params = models.SearchParams(
         idf=models.IdfCorpusParams(
             corpus=models.Filter(
                 must=[
                     models.FieldCondition(
-                        key="matter_id", match=models.MatchValue(value=matter_id)
+                        key="matter_id",
+                        match=models.MatchValue(value=matter_id),
                     )
                 ]
             )
         )
     )
 
+    # Each prefetch retrieves candidates from one named vector. Qdrant fuses
+    # the three ranked lists in the outer query below.
     prefetch = [
         models.Prefetch(
-            query=models.Document(text=question, model=model),
-            using=vector,
+            query=models.Document(text=question, model=DENSE_MODEL),
+            using="minilm_l6_clause",
             filter=query_filter,
-            params=idf if vector == "bm25" else None,
             limit=CANDIDATES,
-        )
-        # The second dense vector is the same model over the document title and
-        # heading as well as the clause. What you embed is a larger lever than
-        # which model you use, and it solves a question nothing else reaches.
-        for vector, model in (
-            ("minilm_l6_clause", DENSE_MODEL),
-            ("minilm_l6_document", DENSE_MODEL),
-            ("bm25", SPARSE_MODEL),
-        )
+        ),
+        models.Prefetch(
+            query=models.Document(text=question, model=DENSE_MODEL),
+            using="minilm_l6_document",
+            filter=query_filter,
+            limit=CANDIDATES,
+        ),
+        models.Prefetch(
+            query=models.Document(text=question, model=SPARSE_MODEL),
+            using="bm25",
+            filter=query_filter,
+            params=bm25_params,
+            limit=CANDIDATES,
+        ),
     ]
 
     groups = client.query_points_groups(
         collection,
         prefetch=prefetch,
         # The document-context vector contributes one answer the other signals
-        # miss, but it is a weaker clause ranker. A quarter-weight keeps that
-        # recall gain while lifting ranking on both the calibration and held-out
-        # questions. Clause-level MiniLM and matter-scoped BM25 remain peers.
+        # miss, but it is a weaker clause ranker, so it gets less weight.
         query=models.RrfQuery(rrf=models.Rrf(weights=[1.0, 0.25, 1.0])),
         query_filter=query_filter,
-        # One hit per source family, so five forwarded copies of one memo cannot
-        # fill the list. Worth six points and two questions.
+        # Return at most one copy from each source family.
         group_by="source_family",
         group_size=1,
         limit=limit,
@@ -102,38 +103,54 @@ def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
     ).groups
     hits = [hit for group in groups for hit in group.hits]
 
-    # A clause that is expressly subject to a definition or an exclusion is half
-    # an answer, and no ranking change ever retrieves the other half. The payload
-    # names it, so fetch it: worth four to seven points and two dependency questions.
-    have = {hit.payload["passage_id"] for hit in hits}
-    wanted = [r for hit in hits for r in hit.payload["references"] if r not in have]
-    if not wanted:
+    # Fetch definitions and exceptions referenced by the retrieved clauses.
+    retrieved_ids = {hit.payload["passage_id"] for hit in hits}
+    missing_references = []
+    for hit in hits:
+        for passage_id in hit.payload["references"]:
+            if passage_id not in retrieved_ids:
+                missing_references.append(passage_id)
+    if not missing_references:
         return hits[:limit]
 
-    # scroll, because this is a lookup by id with no query vector. Same filter
-    # as the search: a referenced clause that was not in effect on the question
-    # date is still a chunk a lawyer cannot use.
+    # Apply the same matter and date rules to reference lookups.
+    reference_filter = models.Filter(
+        must=[
+            models.FieldCondition(
+                key="passage_id",
+                match=models.MatchAny(any=missing_references),
+            ),
+            models.FieldCondition(
+                key="matter_id",
+                match=models.MatchValue(value=matter_id),
+            ),
+            models.FieldCondition(
+                key="effective_from",
+                range=models.DatetimeRange(lte=as_of),
+            ),
+            models.FieldCondition(
+                key="effective_to",
+                range=models.DatetimeRange(gt=as_of),
+            ),
+        ]
+    )
     referenced, _ = client.scroll(
         collection,
-        scroll_filter=models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="passage_id", match=models.MatchAny(any=wanted)
-                ),
-                *query_filter.must,
-            ]
-        ),
-        limit=len(wanted),
+        scroll_filter=reference_filter,
+        limit=len(missing_references),
         with_payload=True,
     )
 
-    # Each referenced clause sits directly behind the clause that points at it,
-    # so the pair reads as one answer and the weakest results fall off the end.
-    by_id = {point.payload["passage_id"]: point for point in referenced}
+    # Place each referenced clause directly after the clause that cites it.
+    referenced_by_id = {
+        point.payload["passage_id"]: point for point in referenced
+    }
     ordered = []
     for hit in hits:
         ordered.append(hit)
-        for ref in hit.payload["references"]:
-            if ref in by_id:
-                ordered.append(by_id.pop(ref))
+        for passage_id in hit.payload["references"]:
+            reference = referenced_by_id.pop(passage_id, None)
+            if reference is not None:
+                ordered.append(reference)
+
     return ordered[:limit]
