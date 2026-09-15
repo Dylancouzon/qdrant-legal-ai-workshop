@@ -76,23 +76,27 @@ def score(args):
         f"   {result['solved']}/{result['questions']} solved"
     )
     print(f"\nSCORE {result['score']} out of 100, the mean of the case scores.")
-    print(
-        "\nscore           this case out of 100: evidence found and graded ranking, over the\n"
-        "                usable slots\n"
-        "evidence found  controlling chunks you retrieved, the largest part of the score\n"
-        "graded ranking  NDCG at rank 5 over the graded results, shown as Graded Ranking\n"
-        "                (NDCG@5) in the browser. A missing controlling chunk lowers it too,\n"
-        "                so it moves with evidence found\n"
-        "wrong client    chunks from another client's files\n"
-        "not in effect   this client's chunks that were not in effect on the question date\n"
-        "duplicate       rank slots taken by a repeat copy of a document you already returned\n"
-        "missing         the controlling chunks this case needed and you did not return\n"
-        "*               a challenge case, scored like the rest and not yet solved by anyone\n"
-        "\nA slot with two faults at once, such as a second copy of another client's memo,\n"
-        "costs one slot rather than two. Until you scope the search, the score moves a point\n"
-        "or two between identical runs, because approximate search over the whole collection\n"
-        "returns a slightly different set each time."
-    )
+    # The legend is reference, and a person runs this command fifteen times in
+    # thirty minutes. Print it once, while it is still news.
+    if previous is None:
+        print(
+            "\nscore           this case out of 100: evidence found and graded ranking, over the\n"
+            "                usable slots\n"
+            "evidence found  controlling chunks you retrieved, the largest part of the score\n"
+            "graded ranking  NDCG at rank 5 over the graded results, shown as Graded Ranking\n"
+            "                (NDCG@5) in the browser. A missing controlling chunk lowers it too,\n"
+            "                so it moves with evidence found\n"
+            "wrong client    chunks from another client's files\n"
+            "not in effect   this client's chunks that were not in effect on the question date\n"
+            "duplicate       rank slots taken by a repeat copy of a document you already returned\n"
+            "missing         the controlling chunks this case needed and you did not return\n"
+            "*               a challenge case, scored like the rest and not yet solved by anyone\n"
+            "\nA slot with two faults at once, such as a second copy of another client's memo,\n"
+            "costs one slot rather than two. Until you scope the search, the score moves a few\n"
+            "points between identical runs, because approximate search over the whole collection\n"
+            "returns a slightly different set each time."
+        )
+
     print(f"\n{representations(qc, name)}")
 
 
@@ -213,7 +217,10 @@ def main():
     p.set_defaults(func=preflight)
 
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None
 
 
 if __name__ == "__main__":

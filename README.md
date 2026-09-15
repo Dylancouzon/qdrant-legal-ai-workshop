@@ -48,7 +48,8 @@ The agent gets one retrieval call and no retries, and the three matters are inve
 1. You edit `lab.py` and nothing else. Its header lists the payload fields and links the two Qdrant pages that explain the starter code.
 2. Keep the signature of `retrieve()` exactly as it is. The scorer calls it.
 3. Query-time Qdrant code only. The collection is read-only and preloaded.
-4. Do not rewrite the question. The agent makes one call and never tries again, so the answer is only ever as good as what `retrieve()` returned.
+4. Find the evidence by searching for it. The scorer needs the graded ids, so they sit in `workshop/questions.py`, and fetching them by id is not a retrieval result.
+5. Do not rewrite the question. The agent makes one call and never tries again, so the answer is only ever as good as what `retrieve()` returned.
 
 ## The Score
 
@@ -68,9 +69,9 @@ case score = 100 x (0.75 x evidence found + 0.25 x graded ranking) x the usable 
 
 The run's score is the mean of the case scores. Every term is a share of something, so two retrievals that return evidence of the same quality score the same, whatever vectors, fusion, or filters produced it. A wrong client, a chunk that was not in effect, and a repeat copy each waste the slot it sits in: a case with all its evidence, ordered perfectly, and one wasted slot scores 80. A slot with two faults at once still costs one slot.
 
-Until you scope the search, the score moves a point or two between identical runs. The starter searches all 3,653 chunks, and approximate search returns a slightly different set each time. Do not chase it.
+Until you scope the search, the score moves a few points between identical runs. The starter searches all 3,653 chunks, and approximate search returns a slightly different set each time. Do not chase it.
 
-The board holds fourteen cases and its total is the number you call out at the end. Two of them carry a challenge tag: nothing we have tried reaches their evidence, and they are scored like the rest, so the best result anyone has reached is 74 rather than 100. Solve one and you beat it.
+The board holds fourteen cases and its total is the number you call out at the end. Two of them carry a challenge tag: nothing we have tried reaches their evidence, and they are scored like the rest. The best we measured is 77, so the board does not top out at 100 and beating 77 is the target.
 
 A larger set of questions stays with the facilitator. The fourteen here teach you the rubric, and the rest is the check on whether a change helps in general or only on the cases you can see.
 

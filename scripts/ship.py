@@ -6,7 +6,7 @@ encrypting them in a repository the participants clone.
     uv run python scripts/ship.py ../qdrant-legal-lab-participants
 
 Copies only what a participant needs, and replaces workshop/questions.py with a
-generated file holding the twelve disclosed calibration questions inline, so
+generated file holding the fourteen disclosed calibration questions inline, so
 nothing in the shipped tree imports the held-out set.
 """
 
@@ -52,7 +52,6 @@ WITHHELD = {
     "workshop/clausebank.py": "organizer only, used at ingest",
     "scripts/panel.py": "plain-text source of the playbook rules",
     "FACILITATOR.md": "the run sheet, with every answer in it",
-    "SLIDES.md": "the deck, including the reveal",
     "scripts/reference_lab.py": "the tuned solution",
     "instructions.md": "the build brief",
     "DECISIONS.md": "the build ledger",

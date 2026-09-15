@@ -23,6 +23,7 @@ import datetime
 import http.server
 import html
 import json
+import os
 import urllib.parse
 from . import agent
 from .display import client_name
@@ -31,7 +32,7 @@ from .playbook import SECTIONS
 from .questions import CALIBRATION, CHALLENGE_IDS, MATTERS
 from .score import remember, score_all, K
 
-PORT = 8000
+PORT = int(os.getenv("PORT", "8000"))
 
 CASE_TITLES = {
     "harbor-cure-before": "Cure Period Before the Amendment",
@@ -463,8 +464,8 @@ def _order(item):
 
 
 PAYLOAD_FIELDS = (
-    "passage_id", "matter_id", "matter_name", "document_title", "section_id",
-    "heading", "text", "instrument_type", "effective_from", "effective_to", "source_family",
+    "document_title", "section_id", "heading", "text", "instrument_type",
+    "effective_from", "effective_to",
 )
 
 
@@ -484,14 +485,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        """Every path answers with a body. A dropped connection leaves the page
+        waiting on a promise that never resolves, and says nothing on screen."""
         route = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(route.query)
-        if route.path == "/":
-            return self.send(self.index(), "text/html")
-        if route.path == "/api/ask":
-            return self.send(self.ask(query))
-        if route.path == "/api/score":
-            return self.send(self.score())
+        try:
+            if route.path == "/":
+                return self.send(self.index(), "text/html")
+            if route.path == "/api/ask":
+                return self.send(self.ask(query))
+            if route.path == "/api/score":
+                return self.send(self.score())
+        except Exception as exc:
+            return self.send({"error": f"{type(exc).__name__}: {exc}"})
         self.send_error(404)
 
     def index(self):
@@ -539,6 +545,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return {"error": "Unknown client matter."}
         try:
             points = lab().retrieve(self.qc, self.name, question, matter, as_of)
+        except RuntimeError as exc:
+            return {"error": str(exc)}
         except Exception as exc:
             return {"error": f"lab.py raised: {type(exc).__name__}: {exc}"}
 
@@ -568,6 +576,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 p.payload for p in current.retrieve(self.qc, self.name, q, m, d, limit=K)
             ]
             result = score_all(CALIBRATION, run, k=K)
+        except RuntimeError as exc:
+            return {"error": str(exc)}
         except Exception as exc:
             return {"error": f"lab.py raised: {type(exc).__name__}: {exc}"}
 
@@ -592,7 +602,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def main():
     Handler.qc, Handler.name = connect(), collection()
     http.server.ThreadingHTTPServer.allow_reuse_address = True
-    with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as server:
+    try:
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    except OSError:
+        raise SystemExit(
+            f"Port {PORT} is busy. Run: PORT={PORT + 1} uv run python -m workshop.app"
+        )
+    with server:
         print(f"Legal Retrieval Lab on http://localhost:{PORT}")
         try:
             server.serve_forever()

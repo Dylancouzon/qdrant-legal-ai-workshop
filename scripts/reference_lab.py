@@ -73,7 +73,7 @@ def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
         prefetch=prefetch,
         # Unweighted. Weighting the dense signals up was worth one question
         # before the BM25 statistics were scoped to the matter, and costs three
-        # after it: 92 unweighted against 89 at 2:2:1.
+        # after it, measured over the 31 scored questions.
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         query_filter=query_filter,
         # One hit per source family, so five copies of one memo cannot fill

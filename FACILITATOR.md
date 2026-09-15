@@ -1,6 +1,6 @@
 # Run sheet
 
-The slide content is in `SLIDES.md`. This file is everything else: what to check, what to say, and what the numbers are.
+What to check, what to say, and what the numbers are. The only organizer document.
 
 ## Before anyone arrives
 
@@ -17,7 +17,7 @@ Then confirm:
 - The participant flow works from the generated directory: `uv sync`, then `uv run python -m workshop.setup`.
 - The Inference tab in the Cloud Console still lists the models.
 - `OPENAI_API_KEY` belongs to a dedicated project with a hard budget cap. Revoke it and the Qdrant key afterwards.
-- The repo URL is on a slide and on a card at each table. Typing a URL from a slide in a dark bar is where the first five minutes go.
+- The repo URL is on a card at each table. Typing a URL from a slide in a dark bar is where the first five minutes go.
 - You have a visible 30-minute timer, and `scripts/reference_lab.py` ready to copy over `lab.py` for the reveal.
 
 ## What you need to understand
@@ -78,9 +78,9 @@ Solo or pairs. They edit `lab.py`, which sits at the top of the repository on it
 
 The browser opens on the agent. A question goes in, the answer comes out, and the chunks it was built from sit underneath, each stating its client and its dates. A row opens on the client's question and the five chunks that came back for it. The board reports the same five columns as `run score`. It says how many slots a case wasted and never which chunk wasted them, so a case that found everything in perfect order and still scores 60 sends a team to read its five chunks.
 
-Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, and they are scored anyway, so the board's ceiling is 74 rather than 100. A team reads its number against a real ceiling instead of against a set with the hard cases taken out, and a team that finds a route we did not gets credit for it.
+Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, and they are scored anyway, so the board does not top out at 100. A team reads its number against a real ceiling instead of against a set with the hard cases taken out, and a team that finds a route we did not gets credit for it.
 
-Expect the first run to read 3 or 4 of 14, with 34 to 38 chunks from the wrong client, and a score between 9 and 12. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a point or two apart. The matter filter clears every wrong-client chunk and takes the board to 40, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens. The reference solution reads 74, which is the known ceiling on this board.
+Expect the first run to read 3 or 4 of 14, with 34 to 39 chunks from the wrong client, and a score between 9 and 13. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a few points apart. The matter filter clears every wrong-client chunk and takes the board to 40, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens. The reference solution reads 74. It is not a ceiling: adding a second hop that follows the `references` payload field reaches 77 and solves two more cases, and both challenge cases stay shut because the date filter removes the only chunk that points at the answer. If a team calls out a number above 74, ask how they got it. The honest answer is a reference hop; the dishonest one is fetching the graded ids out of `workshop/questions.py`, which the rules now forbid and which `ask for their lab.py` catches.
 
 Walk the room. Prompts that unstick people without giving anything away:
 
@@ -113,9 +113,9 @@ Now copy `scripts/reference_lab.py` over `lab.py` and run the identical command.
 
 Nothing about the agent changed. The evidence changed. Say it out loud: the first answer was not a hallucination. The model behaved well both times. It was handed five copies of one opinion and it told you so.
 
-Then three numbers, spoken rather than read off a table. Over the 31 scored questions the starter scores 21: it solves 13 and returns 97 chunks belonging to other clients. Filtering by matter takes those 97 to zero and the score to 60. Everything after that, all thirty minutes of it, is worth another nine questions and twenty-seven points.
+Then three numbers, spoken rather than read off a table. Over the 31 scored questions the starter scores about 21: it solves 12 or 13 and returns roughly 97 chunks belonging to other clients. Filtering by matter takes those 97 to zero and the score to 60. Everything after that, all thirty minutes of it, is worth another nine questions and twenty-seven points.
 
-Hand out the ladder or put it on the last slide. Do not read it aloud.
+Hand out the ladder. Do not read it aloud.
 
 One order of discovery, each rung scored over the 31 questions:
 
@@ -155,7 +155,7 @@ Say what did not work, because that is the more useful half. Every number here i
 
 Weighted fusion is the interesting one. Weighting the two dense signals above BM25 was worth a question before BM25 statistics were scoped to the matter, and costs three points after it. One lever changed what another lever was worth, which is why the reference fuses unweighted. An authority prior over document type changes nothing once grouping is on.
 
-Nobody submits anything. People call out the number on their own board, which is the 14-case calibration score, and you take it on trust. The event is honor-based, and saying so out loud costs nothing.
+Nobody submits anything. People call out the number on their own board, which is the 14-case calibration score, and you take it on trust. The graded chunk ids ship in `workshop/questions.py` because the local scorer needs them, so a team can in principle fetch them by id and read 100. The rules forbid it in one line, and asking the top team for their `lab.py` is the only enforcement there is. The event is honor-based, and saying so out loud costs nothing.
 
 The held-out questions stay in the organizer repository at `workshop/heldout.py`. They are what the ladder below was measured on, and they are the reason the calibration set is small: a team tuning against 14 disclosed cases can overfit, and the ladder tells you what the same change is worth across 31. If you want a check on the top team, ask for their `lab.py` and run it yourself.
 

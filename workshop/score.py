@@ -99,7 +99,6 @@ def score(question, chunks, k=K):
         "duplicate_families": duplicate_families,
         "wasted": len(unusable),
         "missing": sorted(set(question["controlling"]) - found),
-        "inapplicable": leaks + stale,
         "returned": [p["passage_id"] for p in ranked],
     }
     row["score"] = round(case_score(row, k))
@@ -146,7 +145,6 @@ def score_all(questions, retrieve, k=K):
         "coverage": mean("coverage"),
         "ranking": mean("ranking"),
         "solved": sum(1 for r in rows if r["coverage"] == 1.0),
-        "wasted": total_of("wasted"),
         "questions": len(rows),
         "tenant_leaks": total_of("tenant_leaks"),
         "temporal_violations": total_of("temporal_violations"),
@@ -159,7 +157,12 @@ def score_all(questions, retrieve, k=K):
 
 def remember(result):
     """Return the previous run's case scores, then record this one."""
-    previous = json.loads(STATE.read_text())["rows"] if STATE.exists() else None
+    try:
+        previous = json.loads(STATE.read_text())["rows"]
+    except Exception:
+        # Both surfaces write this file, so an interleaved write can truncate
+        # it. A missing comparison is a smaller loss than a dead score command.
+        previous = None
     STATE.parent.mkdir(exist_ok=True)
     STATE.write_text(json.dumps(
         {"rows": {r["question_id"]: r["score"] for r in result["rows"]}}

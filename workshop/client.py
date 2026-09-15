@@ -42,7 +42,15 @@ def lab():
     """
     spec = importlib.util.spec_from_file_location("lab", LAB)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        # The importlib frames above the real error are noise, and a person
+        # reading them in a bar concludes they broke the workshop, not the file.
+        # RuntimeError, not SystemExit: the browser runs this inside a request
+        # handler, and SystemExit escapes `except Exception` and drops the
+        # connection with no body, which is the hang this message exists to stop.
+        raise RuntimeError(f"lab.py raised: {type(exc).__name__}: {exc}") from None
     return module
 
 
