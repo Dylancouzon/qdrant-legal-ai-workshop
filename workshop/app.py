@@ -363,10 +363,10 @@ function board() {
       &middot; as of ${CASES[id].as_of}</small></td>
     ${cells(id)}</tr>
     <tr class="detail-row" data-for="${id}" hidden><td class="detail" colspan="7"></td></tr>`;
-  // One list, the client's cases together. A challenge sits with its siblings
-  // rather than in a section of its own.
+  // One list, the client's cases together, and the two challenges last.
   const ids = Object.keys(CASES).sort((a, b) =>
-    CASES[a].matter_name.localeCompare(CASES[b].matter_name)
+    (CASES[a].probe ? 1 : 0) - (CASES[b].probe ? 1 : 0)
+    || CASES[a].matter_name.localeCompare(CASES[b].matter_name)
     || CASES[a].title.localeCompare(CASES[b].title));
   $('#board').innerHTML = header() + ids.map(row).join('') + totalRow();
   $('#note').innerHTML = '<p class="micro">A case marked challenge is scored like the rest. '
@@ -461,6 +461,12 @@ CASES = {
     for x in CALIBRATION
 }
 
+def _order(item):
+    """Sort key. A challenge sits at the end of every list it appears in."""
+    qid, case = item
+    return (case["probe"], case["matter_name"], case["title"])
+
+
 PAYLOAD_FIELDS = (
     "passage_id", "matter_id", "matter_name", "document_title", "section_id",
     "heading", "text", "instrument_type", "effective_from", "effective_to", "source_family",
@@ -509,9 +515,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             f'<option value="{k}">{v["name"]}</option>' for k, v in MATTERS.items()
         )
         cases = "".join(
-            f'<option value="{html.escape(qid)}">{html.escape(case["title"])}'
-            f'{" (challenge)" if case["probe"] else ""}</option>'
-            for qid, case in CASES.items()
+            f'<option value="{html.escape(qid)}">{html.escape(case["title"])}</option>'
+            for qid, case in sorted(CASES.items(), key=_order)
         )
         return (PAGE % {
             "style": STYLE,
