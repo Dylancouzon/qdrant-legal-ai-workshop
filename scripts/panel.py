@@ -54,8 +54,8 @@ SECTIONS = [
             ],
             [
                 "A memo can be the only record of a fact",
-                "Keep an internal memo when it is the only record of an inspection "
-                "written at the time.",
+                "The only account of an inspection written at the time is sometimes "
+                "an internal memo.",
             ],
         ],
     ],
@@ -65,8 +65,8 @@ SECTIONS = [
         [
             [
                 "A clause and its exception are one answer",
-                "A clause and the definition or exclusion it refers to state the rule "
-                "together, so return both.",
+                "A clause can be expressly subject to a definition or an exclusion "
+                "that sits in a different section.",
             ],
             [
                 "Five copies of one note are one source",
