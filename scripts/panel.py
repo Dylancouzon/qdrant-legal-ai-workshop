@@ -24,22 +24,22 @@ TARGET = ROOT / "workshop" / "playbook.py"
 SECTIONS = [
     [
         "1. Scope the Evidence",
-        "Use this client's documents, in the version that was in effect.",
+        "Use this client's documents, in effect on the question date.",
         [
             [
                 "Evidence is what was in effect on the question date",
-                "An effective period ends on the day its replacement starts, so a clause "
-                "replaced on 1 April does not govern on 1 April.",
+                "The replacement governs from 1 April, and the replaced clause governs "
+                "through 31 March.",
             ],
             [
                 "A replaced clause still governs its own period",
                 "A clause that was later replaced is the right answer to a question dated "
-                "while it governed.",
+                "inside its effective period.",
             ],
             [
                 "Evidence comes from this client's file",
-                "A clause that reads perfectly and belongs to another client is a "
-                "confidentiality incident, and it is the most expensive failure here.",
+                "A clause from another client's file is unusable evidence and a "
+                "confidentiality incident, however well it reads.",
             ],
         ],
     ],
@@ -49,29 +49,29 @@ SECTIONS = [
         [
             [
                 "The instrument governs, the memo reports",
-                "A schedule, an amendment, and an executed exhibit state what the parties "
-                "agreed; an internal summary states what somebody believed.",
+                "An executed schedule, amendment, or exhibit states what the parties "
+                "agreed. An internal summary states what one person believed.",
             ],
             [
                 "A memo can be the only record of a fact",
-                "The only account of an inspection written at the time may be an internal "
-                "memo, so rank a document on what it records.",
+                "Keep an internal memo when it is the only record of an inspection "
+                "written at the time.",
             ],
         ],
     ],
     [
         "3. Return the Whole Answer",
-        "One rule can need several chunks, and several chunks can be one source.",
+        "One rule can need several chunks, and several copies can be one source.",
         [
             [
                 "A clause and its exception are one answer",
-                "A clause that is expressly subject to a definition or an exclusion is half "
-                "an answer, and the half you have points the wrong way.",
+                "A clause and the definition or exclusion it refers to state the rule "
+                "together, so return both.",
             ],
             [
                 "Five copies of one note are one source",
-                "Each copy carries its own document identifier, so removing repeats by "
-                "document identifier leaves all five in place.",
+                "Each copy sits in a file of its own, so the five look like five different "
+                "documents.",
             ],
         ],
     ],
