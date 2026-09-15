@@ -1,16 +1,16 @@
 """THE ONE FILE YOU EDIT.
 
-Everything else in this repository is fixed. Change this file, run
+Everything else is fixed. Change this file, run
 
     uv run python -m workshop.run score
 
-and watch the three numbers move.
+and watch the score move. The browser at localhost:8000 re-reads this file on
+every run, so you never have to restart it.
 
-The collection is read-only and preloaded. It holds the three fictional
-matters this lab is about, and several hundred real public contracts that
-belong to other clients. It may also hold more representations than this
-starter code asks for; `run score` prints how many it uses against how many
-are there.
+The collection is read-only and preloaded. It holds the three client matters
+this lab is about, and several hundred real public contracts belonging to other
+clients. It also holds more representations than this starter asks for; `score`
+prints how many it uses against how many are there.
 
 Keep the signature of retrieve() exactly as it is. The scorer calls it.
 """
@@ -18,7 +18,13 @@ Keep the signature of retrieve() exactly as it is. The scorer calls it.
 from qdrant_client import models
 
 # Cloud Inference embeds the query server-side, so no model runs on your laptop.
+# A named vector and the model behind it are two different things: this queries
+# the vector "minilm_l6_clause", which was built with all-MiniLM-L6-v2. The
+# collection carries others. `run score` prints how many, and nothing tells you
+# which of them is worth using except measuring it.
+DENSE_VECTOR = "minilm_l6_clause"
 DENSE_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+SPARSE_VECTOR = "bm25"
 SPARSE_MODEL = "Qdrant/bm25"
 
 CANDIDATES = 5
@@ -47,7 +53,7 @@ def build_filter(matter_id, as_of):
 
 
 def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
-    """Return ranked passages for one dated question about one matter.
+    """Return ranked chunks for one dated question about one matter.
 
     Keep this signature. Return a list of ScoredPoint with payloads.
     """
@@ -58,9 +64,9 @@ def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
     return client.query_points(
         collection,
         prefetch=[
-            models.Prefetch(query=dense, using="dense_weak",
+            models.Prefetch(query=dense, using=DENSE_VECTOR,
                             filter=query_filter, limit=CANDIDATES),
-            models.Prefetch(query=sparse, using="bm25",
+            models.Prefetch(query=sparse, using=SPARSE_VECTOR,
                             filter=query_filter, limit=CANDIDATES),
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),

@@ -4,15 +4,16 @@ This is a timed retrieval-tuning exercise. A person has thirty minutes. Do not s
 
 ## The only file you may edit
 
-`workshop/lab.py`. Everything else is fixed, including the scorer, the corpus, and the questions. Keep the signature of `retrieve()` exactly as it is.
+`lab.py`, at the top of the repository. Everything else is fixed, including the scorer, the corpus, and the questions. Keep the signature of `retrieve()` exactly as it is.
 
 ## What you are optimising
 
-Run `uv run python -m workshop.run score`. It prints, per question and in total:
+Run `uv run python -m workshop.run score`. It prints, per case and in total:
 
-- `cover`, the share of controlling passages retrieved. This is the primary score.
-- `rank`, ordering quality of the remaining graded results. Tiebreaker.
-- `leak`, `stale`, `dup`, three counts of visible failures. Drive them to zero.
+- `evidence found`, the controlling chunks retrieved out of the number the case needs. This is the primary score.
+- `order`, ordering quality of the graded results. Tiebreaker. It is not independent of coverage: a missing controlling chunk lowers it too.
+- `wrong client`, `not in effect`, `duplicate`, three counts of visible failures. Drive them to zero.
+- `score`, out of 100: `100 x (0.75 x evidence found + 0.25 x order)`, times the usable share of the five slots. Each visible failure wastes the slot it sits in, and a slot with two faults at once still costs one slot. The run's score is the mean of the case scores.
 
 Change one thing in `lab.py`, run `score`, keep the change if the numbers improve. That is the whole method.
 
@@ -20,9 +21,10 @@ Change one thing in `lab.py`, run `score`, keep the change if the numbers improv
 
 - It is read-only and preloaded. Do not try to write, re-ingest, or re-embed.
 - Every embedding is produced by Qdrant Cloud Inference. No model runs locally. Use `models.Document(text=..., model=...)`.
-- It holds more named vectors than `lab.py` currently queries. `score` prints how many it uses against how many exist. Inspecting the collection is allowed and encouraged.
-- Every passage payload carries: `matter_id`, `effective_from`, `effective_to`, `status`, `instrument_type`, `source_family`, `document_id`, `section_id`, `heading`, `references`.
+- It holds more named vectors than `lab.py` currently queries. `score` prints how many it uses against how many exist. Inspecting the collection is allowed and encouraged. Each name states the model and the text it was built from; none of them states whether it is any good on this corpus, which is a measurement rather than a guess. Two of the six need cluster billing and are empty.
+- Every chunk payload carries: `matter_id`, `effective_from`, `effective_to`, `status`, `instrument_type`, `source_family`, `document_id`, `section_id`, `heading`, `references`.
 - `effective_from` and `effective_to` are ISO dates, filterable with `models.DatetimeRange`.
+- The starter searches the whole collection, and approximate search returns a slightly different set each run, so its score moves a point or two between runs. Scoped configurations are steady.
 
 ## Out of scope
 

@@ -4,10 +4,10 @@ Relevance rubric, written down before annotation so that annotation choices do
 not dominate the apparent effect of tuning:
 
 controlling   Evidence the answer cannot be given without. A question with two
-              controlling passages needs both, and retrieving one of the two
+              controlling chunks needs both, and retrieving one of the two
               earns half of the coverage score for that question.
 supporting    Evidence a careful reader would cite in addition. It raises
-              ranking quality and never substitutes for a controlling passage.
+              ranking quality and never substitutes for a controlling chunk.
 inapplicable  Wrong matter, or outside the effective window on the question
               date. Returning one of these costs applicability.
 distractor    In scope and readable, and still not evidence for this question.
@@ -71,10 +71,10 @@ q(
     "harbor-cure-before",
     matter="harbor",
     as_of="2026-01-20",
-    question=(
-        "Meridian says we broke the contract and sent us a letter about it on 20 January 2026. "
-        "How long do we have to put it right before they can walk away?"
-    ),
+question=(
+    "Meridian says we broke the contract and sent us a letter about it on 20 January 2026. How "
+    "long do we have to put it right before they can walk away?"
+),
     construction="historical applicability",
     controlling=["harbor-cure"],
     supporting=["harbor-convenience"],
@@ -83,7 +83,7 @@ q(
     rationale=(
         "Section 11.1 as originally executed governs a notice received before 1 April 2026. "
         "Amendment No. 3 says so in its own text, and its effective window starts after the "
-        "question date. The controlling passage carries status superseded, which is correct "
+        "question date. The controlling chunk carries status superseded, which is correct "
         "for this question."
     ),
     improvement=(
@@ -95,10 +95,10 @@ q(
     "harbor-cure-boundary",
     matter="harbor",
     as_of="2026-04-01",
-    question=(
-        "Meridian sent us that same letter on 1 April 2026 instead. How long do we have to put "
-        "things right?"
-    ),
+question=(
+    "Meridian sent us a breach letter on 1 April 2026. How long do we have to put things right "
+    "before they can walk away?"
+),
     construction="historical applicability, changeover date",
     controlling=["harbor-am3-2"],
     supporting=[],
@@ -118,10 +118,10 @@ q(
     "harbor-liability-cap",
     matter="harbor",
     as_of="2026-09-01",
-    question=(
-        "If Meridian leaks our patient data, is the most we can claim back from them capped at a "
-        "year of fees?"
-    ),
+question=(
+    "If Meridian leaks our patient data, is the most we can claim back from them capped at a year "
+    "of fees?"
+),
     construction="evidence dependency",
     controlling=["harbor-msa-13-1", "harbor-msa-1-14"],
     supporting=[],
@@ -129,7 +129,7 @@ q(
     distractor=["harbor-msa-13-2", "harbor-confidentiality"],
     rationale=(
         "Section 13.1 states the cap and sends the reader to Section 1.14 for the carve-out. "
-        "Section 1.14 puts a Section 9 breach outside the cap. One passage alone gives the "
+        "Section 1.14 puts a Section 9 breach outside the cap. One chunk alone gives the "
         "wrong answer in either direction."
     ),
     improvement=(
@@ -141,9 +141,9 @@ q(
     "harbor-retention",
     matter="harbor",
     as_of="2026-09-01",
-    question=(
-        "How long does Meridian have to keep our patient files before it is allowed to delete them?"
-    ),
+question=(
+    "How long does Meridian have to keep our patient files before it is allowed to delete them?"
+),
     construction="authority versus repetition",
     controlling=["harbor-exh-d2"],
     supporting=[],
@@ -168,9 +168,7 @@ q(
     "cedar-uplift-before",
     matter="cedar",
     as_of="2025-06-10",
-    question=(
-        "Our Cedar renewal lands on 1 July 2025. How much can Tessellate put the price up?"
-    ),
+question="Our renewal lands on 1 July 2025. How much can Tessellate put the price up?",
     construction="historical applicability",
     controlling=["cedar-sub-6-2"],
     supporting=[],
@@ -187,10 +185,10 @@ q(
     "cedar-uplift-boundary",
     matter="cedar",
     as_of="2026-01-01",
-    question=(
-        "Same question for the renewal that lands on 1 January 2026. How much can Tessellate put "
-        "the price up?"
-    ),
+question=(
+    "Our renewal lands on 1 January 2026. How much can Tessellate put the price up at that "
+    "renewal?"
+),
     construction="historical applicability, changeover date",
     controlling=["cedar-am1-3"],
     supporting=[],
@@ -206,10 +204,10 @@ q(
     "cedar-service-credit",
     matter="cedar",
     as_of="2026-09-01",
-    question=(
-        "The platform was down for six hours in August 2026, during a planned maintenance slot "
-        "they told us about in advance. Do we get any money back?"
-    ),
+question=(
+    "Our supplier's platform was down for six hours in August 2026, during a planned maintenance "
+    "slot they told us about in advance. Do we get any money back?"
+),
     construction="evidence dependency",
     controlling=["cedar-sla-4", "cedar-sla-1"],
     supporting=[],
@@ -226,10 +224,10 @@ q(
     "cedar-renewal-notice",
     matter="cedar",
     as_of="2026-09-01",
-    question=(
-        "How far ahead do we have to tell Tessellate we are leaving, so the contract does not roll "
-        "over for another year?"
-    ),
+question=(
+    "How far ahead do we have to tell Tessellate we are leaving, so the contract does not roll "
+    "over for another year?"
+),
     construction="authority versus repetition",
     controlling=["cedar-sub-3-1"],
     supporting=[],
@@ -249,10 +247,10 @@ q(
     "atlas-rejection-before",
     matter="atlas",
     as_of="2026-05-20",
-    question=(
-        "A shipment landed on 20 May 2026 and the parts are wrong. How long do we have to send "
-        "them back?"
-    ),
+question=(
+    "A shipment of parts from our supplier landed on 20 May 2026 and the parts are wrong. How "
+    "long do we have to send them back?"
+),
     construction="historical applicability",
     controlling=["atlas-sup-4-2"],
     supporting=[],
@@ -268,10 +266,10 @@ q(
     "atlas-rejection-boundary",
     matter="atlas",
     as_of="2026-06-01",
-    question=(
-        "Same problem with a shipment that landed on 1 June 2026. How long do we have to send them "
-        "back?"
-    ),
+question=(
+    "A shipment of parts from our supplier landed on 1 June 2026 and the parts are wrong. How "
+    "long do we have to send them back?"
+),
     construction="historical applicability, changeover date",
     controlling=["atlas-am2-1"],
     supporting=[],
@@ -287,10 +285,10 @@ q(
     "atlas-warranty-modified",
     matter="atlas",
     as_of="2026-09-01",
-    question=(
-        "Our own shop reworked a servo assembly and it failed a few months later. Can we still make "
-        "Fairweather pay to put it right?"
-    ),
+question=(
+    "Our own shop reworked a servo assembly and it failed a few months later. Can we still make "
+    "Fairweather pay to put it right?"
+),
     construction="evidence dependency",
     controlling=["atlas-sup-8-1", "atlas-sup-8-4"],
     supporting=[],
@@ -307,9 +305,7 @@ q(
     "atlas-substitution-approved",
     matter="atlas",
     as_of="2026-09-01",
-    question=(
-        "Are we cleared to build with the new 8841-C connector?"
-    ),
+question="Are we cleared to build with the new 8841-C connector?",
     construction="authority versus repetition",
     controlling=["atlas-ecn-114", "atlas-sup-5-3"],
     supporting=[],
@@ -329,16 +325,16 @@ q(
 BY_QUESTION = {x["question_id"]: x for x in QUESTIONS}
 
 
-def covers(passage, as_of):
+def covers(chunk, as_of):
     """Applicability window, half open: effective_from <= as_of < effective_to."""
-    return passage["effective_from"] <= as_of < passage["effective_to"]
+    return chunk["effective_from"] <= as_of < chunk["effective_to"]
 
 
 def check(questions=None, expect=12, require_constructions=True):
     ids = set(BY_ID)
     for p in BY_ID.values():
         for r in p["references"]:
-            assert r in ids, f"{p['passage_id']} references missing passage {r}"
+            assert r in ids, f"{p['passage_id']} references missing chunk {r}"
         assert p["text"].strip() and p["heading"].strip(), p["passage_id"]
 
     questions = QUESTIONS if questions is None else questions
@@ -347,10 +343,10 @@ def check(questions=None, expect=12, require_constructions=True):
 
     for x in questions:
         named = x["controlling"] + x["supporting"] + x["inapplicable"] + x["distractor"]
-        assert len(named) == len(set(named)), f"{x['question_id']}: passage named twice"
+        assert len(named) == len(set(named)), f"{x['question_id']}: chunk named twice"
         assert x["controlling"], x["question_id"]
         for pid in named:
-            assert pid in ids, f"{x['question_id']} names missing passage {pid}"
+            assert pid in ids, f"{x['question_id']} names missing chunk {pid}"
         for pid in x["controlling"] + x["supporting"]:
             p = BY_ID[pid]
             assert p["matter_id"] == x["matter_id"], f"{x['question_id']}: {pid} wrong matter"
@@ -376,7 +372,7 @@ def check(questions=None, expect=12, require_constructions=True):
             "authority versus repetition",
         }, (matter, kinds)
 
-    # The historical questions must turn on a superseded passage, or the
+    # The historical questions must turn on a superseded chunk, or the
     # status-filter bug has nothing to break.
     superseded = [
         x
@@ -404,7 +400,7 @@ def check(questions=None, expect=12, require_constructions=True):
     assert len(duplicated) == 3, families
     assert singletons, "no memo carries unique evidence; memo down-weighting is an exploit"
 
-    return f"{len(BY_ID)} passages, {len(questions)} questions, all checks pass"
+    return f"{len(BY_ID)} chunks, {len(questions)} questions, all checks pass"
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ nothing in the shipped tree imports the held-out set.
 """
 
 import json
+import getpass
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -27,11 +29,14 @@ SHIP = [
     ".python-version",
     "pyproject.toml",
     "uv.lock",
-    "workshop/lab.py",
+    "lab.py",
     "workshop/run.py",
     "workshop/score.py",
     "workshop/client.py",
+    "workshop/setup.py",
     "workshop/app.py",
+    "workshop/agent.py",
+    "workshop/display.py",
     "workshop/playbook.py",
 ]
 
@@ -45,6 +50,10 @@ WITHHELD = {
     "workshop/bench.py": "organizer measurement, reveals the whole lever ladder",
     "workshop/ingest.py": "organizer only, needs a write key",
     "workshop/clausebank.py": "organizer only, used at ingest",
+    "scripts/panel.py": "plain-text source of the playbook rules",
+    "FACILITATOR.md": "the run sheet, with every answer in it",
+    "SLIDES.md": "the deck, including the reveal",
+    "scripts/reference_lab.py": "the tuned solution",
     "instructions.md": "the build brief",
     "DECISIONS.md": "the build ledger",
     "experiments.jsonl": "every measured configuration",
@@ -85,7 +94,7 @@ def main():
 
     from workshop.questions import CALIBRATION, MATTERS, PROBES
 
-    # The scorer needs the graded passage ids. It does not need the notes that
+    # The scorer needs the graded chunk ids. It does not need the notes that
     # say which lever fixes the question; shipping those hands over the ladder
     # one question at a time.
     answer_key = {"construction", "rationale", "improvement"}
@@ -101,31 +110,44 @@ def main():
 
     # questions.py is in WITHHELD because the organizer version is withheld;
     # the generated replacement above is the one that ships.
+    # questions.py is withheld in its organizer form, then regenerated above.
+    # The organizer .env must never reach the participant package.
     forbidden = set(WITHHELD) - {"workshop/questions.py"}
-    # A participant should not have to type a URL and a key from a slide. If the
-    # read-only key exists, ship a filled .env; if it does not, say so loudly,
-    # because the fallback in client.py would otherwise hand out the write key.
-    import os
 
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
     readonly = os.getenv("QDRANT_READONLY_API_KEY", "").strip()
     url = os.getenv("QDRANT_URL", "").strip()
-    if readonly and url:
-        (target / ".env").write_text(
-            f"QDRANT_URL={url}\n"
-            f"QDRANT_READONLY_API_KEY={readonly}\n"
-            f"QDRANT_COLLECTION={os.getenv('QDRANT_COLLECTION', 'legal_lab_v1')}\n"
-            "OPENAI_API_KEY=\n"
-            f"OPENAI_MODEL={os.getenv('OPENAI_MODEL', 'gpt-5.6-luna')}\n"
+    openai = os.getenv("OPENAI_API_KEY", "").strip()
+    if not readonly or not url or not openai:
+        sys.exit(
+            "Set QDRANT_URL, QDRANT_READONLY_API_KEY, and OPENAI_API_KEY "
+            "in the organizer .env first."
         )
-        print("shipped a filled .env using the read-only key")
-    else:
-        print("WARNING: QDRANT_READONLY_API_KEY is not set in .env.")
-        print("         Participants will have nothing to connect with, and if they are")
-        print("         handed the write key instead, thirty laptops can delete the")
-        print("         collection. Create a read-only, collection-scoped key first.")
+
+    password = os.getenv("WORKSHOP_SETUP_PASSWORD", "")
+    if not password:
+        if not sys.stdin.isatty():
+            sys.exit("Set WORKSHOP_SETUP_PASSWORD or run ship.py in an interactive terminal.")
+        password = getpass.getpass("Password participants will enter: ")
+        confirmation = getpass.getpass("Confirm workshop password: ")
+        if password != confirmation:
+            sys.exit("Passwords did not match.")
+    if len(password) < 10:
+        sys.exit("Use a workshop password with at least 10 characters.")
+
+    from workshop.setup import encrypt
+
+    plaintext = (
+        f"QDRANT_URL={url}\n"
+        f"QDRANT_READONLY_API_KEY={readonly}\n"
+        f"QDRANT_COLLECTION={os.getenv('QDRANT_COLLECTION', 'legal_lab_v2')}\n"
+        f"OPENAI_API_KEY={openai}\n"
+        f"OPENAI_MODEL={os.getenv('OPENAI_MODEL', 'gpt-5.6-luna')}\n"
+    ).encode()
+    (target / ".env.enc").write_bytes(encrypt(plaintext, password))
+    print("shipped encrypted workshop credentials as .env.enc")
 
     leaked = [
         path.relative_to(target).as_posix()
@@ -143,7 +165,7 @@ def main():
         if found:
             sys.exit(f"{path.name} mentions held-out question ids: {found}")
 
-    print(f"shipped {len(SHIP) + 1} files to {target}")
+    print(f"shipped {len(SHIP) + 2} files to {target}")
     print("withheld:")
     for name, why in WITHHELD.items():
         print(f"  {name:28} {why}")

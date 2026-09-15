@@ -17,8 +17,8 @@ import uuid
 from qdrant_client import models
 from .client import connect
 from .clausebank import load as load_clause_bank
-from .corpus import PASSAGES as FICTIONAL
-from .vectors import MODELS, DENSE, SPARSE, COLBERT, embed_text
+from .corpus import CHUNKS as FICTIONAL
+from .vectors import MODELS, DENSE, BM25, SPLADE, COLBERT, embed_text
 
 NAMESPACE = uuid.UUID("b1f0c0de-0000-4000-8000-000000000001")
 BATCH = 32
@@ -56,8 +56,8 @@ def create(qc, collection, recreate):
         # IDF belongs on BM25, whose raw term counts carry no corpus weighting.
         # SPLADE already emits learned term weights, so adding IDF double counts.
         sparse_vectors_config={
-            "bm25": models.SparseVectorParams(modifier=models.Modifier.IDF),
-            "splade": models.SparseVectorParams(),
+            BM25: models.SparseVectorParams(modifier=models.Modifier.IDF),
+            SPLADE: models.SparseVectorParams(),
         },
     )
     for field, schema in [
@@ -108,9 +108,9 @@ def served(qc, collection):
     return ok, refused
 
 
-def load(qc, collection, names, passages):
-    for start in range(0, len(passages), BATCH):
-        chunk = passages[start : start + BATCH]
+def load(qc, collection, names, chunks):
+    for start in range(0, len(chunks), BATCH):
+        chunk = chunks[start : start + BATCH]
         qc.upsert(
             collection,
             points=[
@@ -123,26 +123,26 @@ def load(qc, collection, names, passages):
             ],
             wait=True,
         )
-        print(f"  loaded {min(start + BATCH, len(passages))}/{len(passages)}", flush=True)
+        print(f"  loaded {min(start + BATCH, len(chunks))}/{len(chunks)}", flush=True)
 
 
 def main():
-    collection = os.getenv("QDRANT_COLLECTION", "legal_lab_v1")
+    collection = os.getenv("QDRANT_COLLECTION", "legal_lab_v2")
     qc = connect(write=True)
     fresh = create(qc, collection, "--recreate" in sys.argv)
     print(f"collection {collection}: {'created' if fresh else 'already exists'}")
 
     names, refused = served(qc, collection)
     for name in names:
-        print(f"  serving  {name:13} {MODELS[name][0]}")
+        print(f"  serving  {name:18} {MODELS[name][0]}")
     for name, why in refused.items():
-        print(f"  refused  {name:13} {MODELS[name][0]} :: {why}")
+        print(f"  refused  {name:18} {MODELS[name][0]} :: {why}")
     if not names:
         sys.exit("No model is reachable. Check the cluster Inference tab.")
 
-    passages = FICTIONAL + load_clause_bank()
-    print(f"corpus: {len(FICTIONAL)} fictional + {len(passages) - len(FICTIONAL)} real clause-bank passages")
-    load(qc, collection, names, passages)
+    chunks = FICTIONAL + load_clause_bank()
+    print(f"corpus: {len(FICTIONAL)} fictional + {len(chunks) - len(FICTIONAL)} real clause-bank chunks")
+    load(qc, collection, names, chunks)
     count = qc.count(collection, exact=True).count
     print(f"done: {count} points, vectors loaded: {', '.join(names)}")
     if refused:

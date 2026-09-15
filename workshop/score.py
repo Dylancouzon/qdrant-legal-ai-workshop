@@ -1,17 +1,28 @@
-"""The three published dimensions, scored against the rubric in validation.py.
+"""The published dimensions, scored against the rubric in validation.py.
 
-coverage       Share of the controlling passages that were retrieved. Two
-               controlling passages means retrieving one earns one half.
-ranking        NDCG over graded results. A source family contributes once, so
-               the second and later copies of a memo take a rank slot and earn
-               nothing.
+coverage   Share of the controlling chunks that were retrieved. Two controlling
+           chunks means retrieving one earns one half. Printed as a fraction,
+           "1 of 2", and as Evidence Found.
+ranking    NDCG over graded results, reported as Order. A source family
+           contributes once, so the second and later copies of a memo take a
+           rank slot and earn nothing. It is not independent of coverage: a
+           missing controlling chunk lowers it too.
+score      One number out of 100, from case_score below: coverage and ranking in
+           the weights that function names, multiplied by the share of the k
+           slots a lawyer could rely on.
 
-Rank on coverage first and ranking second, as the brief sets out. Applicability
-is reported as three counts rather than one average, because an average of
-1.000 hid the concrete failures a reader can see in the result list.
+Rank on the score, and on coverage before ranking quality, as the brief sets
+out. The three failures stay as counts rather than one average, because an
+average of 1.000 hid the concrete failures a reader can see in the result list.
 """
 
+import json
 import math
+from pathlib import Path
+
+# The previous run, so a delta answers "did the change I just made help".
+# Both the browser and `run score` write it, so the two routes agree.
+STATE = Path(__file__).resolve().parents[1] / ".workshop" / "last_run.json"
 
 K = 5
 GRADE = {"controlling": 3.0, "supporting": 1.0}
@@ -23,10 +34,10 @@ def grades(question):
     return out
 
 
-def applicable(passage, question):
+def applicable(chunk, question):
     return (
-        passage["matter_id"] == question["matter_id"]
-        and passage["effective_from"] <= question["as_of"] < passage["effective_to"]
+        chunk["matter_id"] == question["matter_id"]
+        and chunk["effective_from"] <= question["as_of"] < chunk["effective_to"]
     )
 
 
@@ -34,26 +45,32 @@ def _dcg(gains):
     return sum(g / math.log2(i + 2) for i, g in enumerate(gains))
 
 
-def score(question, passages, k=K):
+def score(question, chunks, k=K):
     """Score one ranked list of returned payloads against one validation question.
 
     Payloads, not ids, so the scorer grades what the system actually returned
     and never needs to look anything up in the corpus.
     """
-    ranked = list(passages)[:k]
+    ranked = list(chunks)[:k]
     table = grades(question)
 
     seen_families = set()
     gains = []
     duplicate_families = 0
-    for payload in ranked:
+    # Which rank slots a lawyer could not rely on. A slot with two faults at
+    # once, such as a second copy of another client's memo, is still one slot.
+    unusable = set()
+    for position, payload in enumerate(ranked):
         family = payload["source_family"]
         gain = table.get(payload["passage_id"], 0.0)
         if family in seen_families:
             gain = 0.0  # repetition is not corroboration
             duplicate_families += 1
+            unusable.add(position)
         seen_families.add(family)
         gains.append(gain)
+        if not applicable(payload, question):
+            unusable.add(position)
 
     ideal = sorted(table.values(), reverse=True)[:k]
     ranking = _dcg(gains) / _dcg(ideal) if ideal else 0.0
@@ -71,17 +88,50 @@ def score(question, passages, k=K):
         if p["matter_id"] == question["matter_id"] and not applicable(p, question)
     ]
 
-    return {
+    row = {
         "question_id": question["question_id"],
         "coverage": coverage,
+        "found": len(found),
+        "controlling": len(question["controlling"]),
         "ranking": ranking,
         "tenant_leaks": len(leaks),
         "temporal_violations": len(stale),
         "duplicate_families": duplicate_families,
+        "wasted": len(unusable),
         "missing": sorted(set(question["controlling"]) - found),
         "inapplicable": leaks + stale,
         "returned": [p["passage_id"] for p in ranked],
     }
+    row["score"] = round(case_score(row, k))
+    return row
+
+
+# What the evidence set is worth, and what is wrong with it. Coverage leads,
+# ordering quality follows it, and both are earned back only on the share of the
+# result list a lawyer could actually use.
+COVERAGE_WEIGHT = 0.75
+ORDER_WEIGHT = 0.25
+
+
+def case_score(row, k=K):
+    """Score one case out of 100.
+
+    Every term is a share of something, so the units are comparable and a
+    different retrieval that returns the same quality of evidence scores the
+    same. Quality is coverage first and ordering second, in the proportions the
+    brief sets out. Usable is the share of the k slots that a lawyer could rely
+    on: a chunk from another client, a chunk that was not in effect, and a
+    repeat copy of a document already returned each waste the slot it sits in.
+    One slot with two faults at once is still one slot.
+    """
+    quality = COVERAGE_WEIGHT * row["coverage"] + ORDER_WEIGHT * row["ranking"]
+    usable = max(0.0, 1 - min(row["wasted"], k) / k)
+    return 100 * quality * usable
+
+
+def total(result):
+    """The run's score: the mean of its case scores, rounded."""
+    return round(sum(case_score(row) for row in result["rows"]) / len(result["rows"]))
 
 
 def score_all(questions, retrieve, k=K):
@@ -91,17 +141,30 @@ def score_all(questions, retrieve, k=K):
         for x in questions
     ]
     mean = lambda key: sum(r[key] for r in rows) / len(rows)
-    total = lambda key: sum(r[key] for r in rows)
-    return {
+    total_of = lambda key: sum(r[key] for r in rows)
+    result = {
         "coverage": mean("coverage"),
         "ranking": mean("ranking"),
         "solved": sum(1 for r in rows if r["coverage"] == 1.0),
+        "wasted": total_of("wasted"),
         "questions": len(rows),
-        "tenant_leaks": total("tenant_leaks"),
-        "temporal_violations": total("temporal_violations"),
-        "duplicate_families": total("duplicate_families"),
+        "tenant_leaks": total_of("tenant_leaks"),
+        "temporal_violations": total_of("temporal_violations"),
+        "duplicate_families": total_of("duplicate_families"),
         "rows": rows,
     }
+    result["score"] = total(result)
+    return result
+
+
+def remember(result):
+    """Return the previous run's case scores, then record this one."""
+    previous = json.loads(STATE.read_text())["rows"] if STATE.exists() else None
+    STATE.parent.mkdir(exist_ok=True)
+    STATE.write_text(json.dumps(
+        {"rows": {r["question_id"]: r["score"] for r in result["rows"]}}
+    ))
+    return previous
 
 
 def demo():
@@ -117,14 +180,14 @@ def demo():
     assert perfect["coverage"] == 1.0 and perfect["ranking"] == 1.0, perfect
     assert perfect["tenant_leaks"] == 0 and perfect["temporal_violations"] == 0, perfect
 
-    # Same six passages, instrument last: coverage holds, ranking drops.
+    # Same six chunks, instrument last: coverage holds, ranking drops.
     late = score(x, ids(*memos, "harbor-exh-d2"), k=6)
     assert late["coverage"] == 1.0 and late["ranking"] < 0.5, late
 
     # Repetition must not pay. Five memo copies score as one distractor.
     assert score(x, ids(*memos))["ranking"] == 0.0
 
-    # Two controlling passages, one retrieved, is half coverage.
+    # Two controlling chunks, one retrieved, is half coverage.
     dep = BY_QUESTION["harbor-liability-cap"]
     assert score(dep, ids("harbor-msa-13-1"))["coverage"] == 0.5
 
@@ -134,6 +197,28 @@ def demo():
     leak = score(x, ids("harbor-exh-d2", "cedar-cure"))
     assert leak["tenant_leaks"] == 1 and leak["temporal_violations"] == 0, leak
     assert score(x, ids("harbor-exh-d2", *memos))["duplicate_families"] == 3
+
+    # One number out of 100: coverage and ordering, over the usable share of the
+    # result list. Every term is a share, so the units are comparable.
+    full = {"coverage": 1.0, "ranking": 1.0, "wasted": 0}
+    assert case_score(full) == 100, case_score(full)
+    # Coverage leads ordering: all the evidence badly ordered beats half of it
+    # perfectly ordered.
+    assert case_score(dict(full, ranking=0.0)) == 75
+    assert case_score(dict(full, coverage=0.5, ranking=1.0)) == 62.5
+    # One wasted slot in five costs a fifth, and five waste the case.
+    assert case_score(dict(full, wasted=1)) == 80
+    assert case_score(dict(full, wasted=5)) == 0
+    assert case_score(dict(full, wasted=9)) == 0, "never below zero"
+
+    # A slot with two faults at once is one slot. Two copies of another
+    # client's memo are two wrong-client chunks and one duplicate, and they
+    # waste the two slots they sit in, not three.
+    twice = score(x, ids("harbor-exh-d2", "cedar-cure", "cedar-cure"))
+    assert twice["tenant_leaks"] == 2 and twice["duplicate_families"] == 1, twice
+    assert twice["wasted"] == 2, twice
+    assert twice["score"] == round(case_score(dict(
+        coverage=twice["coverage"], ranking=twice["ranking"], wasted=2))), twice
 
     hist = BY_QUESTION["harbor-cure-before"]
     assert score(hist, ids("harbor-cure"))["temporal_violations"] == 0

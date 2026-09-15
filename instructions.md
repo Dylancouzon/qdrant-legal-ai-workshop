@@ -1,5 +1,7 @@
 # Build Brief: Qdrant Legal Retrieval Lab
 
+The original brief, kept as the record of what was asked for. `DECISIONS.md` carries what was built, what it measured, and what changed since.
+
 Instructions for the session that builds this workshop. The repo was stripped to `.git`, `.gitignore`, `.gitattributes`, and `.python-version` on 2026-09-13. The previous version is recoverable at commit `5962901`; its `data.py`, `engine.py`, and `evaluation.py` are worth reading for the corpus metadata design, which was the good part.
 
 ## The Event
@@ -23,13 +25,13 @@ Presenter: Dylan Couzon, DevRel at Qdrant. Dylan decides; the build session exec
 
 A retrieval tuning competition on a legal corpus, and an evidence policy exercise, together. Both, deliberately. A team that only fixes technical defects should not be able to win, and a team that only reasons about legal applicability should not be able to win either.
 
-Participants get a working but deliberately weak Qdrant retrieval setup. They edit exactly one file. They have a local web app where they ask questions, see the ranked passages, compare against the previous run, and read the playbook. They tune for 30 minutes. At the end a held-out question set produces a score.
+Participants get a working but deliberately weak Qdrant retrieval setup. They edit exactly one file. They have a local web app where they ask questions, see the ranked chunks, compare against the previous run, and read the playbook. They tune for 30 minutes. At the end a held-out question set produces a score.
 
 ## Settled Decisions
 
 **Qdrant Cloud collection, preloaded, for everyone.** No local ingest, no Docker, no re-ingest. This gives a uniform starting line, removes the largest source of night-of failure, allows a bigger corpus, and collapses setup to installing the client and connecting. Dylan will put a read-only, collection-scoped API key in the repo. Confirm it is scoped to read and to that collection only.
 
-**Precompute several representations server-side.** The collection holds six: a weak default dense vector, a second dense vector from the same model over document title plus heading plus text, a stronger dense vector, BM25, SPLADE++, and a ColBERT-style multivector. The second dense vector was added after measurement showed that what you embed is a larger lever than which model you use, and it is the difference between 20 and 23 solved questions when combined with fusion weights. Every "upgrade the model" move becomes a one-line query change instead of a re-ingest. This is what makes the Cloud collection strictly better than local.
+**Precompute several representations server-side.** The collection holds six: `minilm_l6_clause` over the clause body, `minilm_l6_document` from the same model over document title plus heading plus text, `mxbai_large_v1`, `bm25`, `splade_pp_v1`, and `colbert_small_v1`. The second dense vector was added after measurement showed that what you embed is a larger lever than which model you use, and it is the difference between 20 and 23 solved questions when combined with fusion weights. Every "upgrade the model" move becomes a one-line query change instead of a re-ingest. This is what makes the Cloud collection strictly better than local.
 
 **Ship ColBERT without telling anyone.** The starter code uses only the weak dense vector and the sparse vector. Late interaction is a large score jump available to anyone who inspects what the collection actually contains. It must be discoverable, not guessable: the app diagnostics panel shows which vectors are in use against the total present, and the editable file's header says the collection may hold more than the starter code uses. That is the only hint.
 
@@ -43,7 +45,7 @@ Participants get a working but deliberately weak Qdrant retrieval setup. They ed
 
 **Publish the scored dimensions, keep the questions hidden.** Participants know they will be measured on applicability, controlling evidence coverage, and ranking quality. They do not know the questions.
 
-**The chatbot stays out of the tuning loop.** Fluent text conceals bad evidence, which is the lesson. Use a generated brief in the opening demo, then keep the main loop showing passages. Reveal generated answers after a team commits its evidence judgment.
+**The chatbot stays out of the tuning loop.** Fluent text conceals bad evidence, which is the lesson. Use a generated brief in the opening demo, then keep the main loop showing chunks. Reveal generated answers after a team commits its evidence judgment.
 
 **The agent does not retry.** The demo agent makes exactly one retrieval call through the participant's `retrieve()`, with no rephrasing, no query rewriting, and no second attempt. That makes single-shot retrieval quality a faithful measure of the end result, keeps scoring deterministic and free of model cost, and preserves the rule that the chatbot stays out of the tuning loop. Query rewriting is therefore not a participant lever; participants tune Qdrant.
 
@@ -53,7 +55,7 @@ Participants get a working but deliberately weak Qdrant retrieval setup. They ed
 
 **The knob menu.** Build the levers, then play the workshop ourselves and balance. The target mix is silent bugs, tuning, and discoverable improvements, where no single category is sufficient to win. Codex argued for cutting the scored track to three interventions because breadth crowds out understanding in 30 minutes; treat that as a hypothesis to test during balancing, not a decision.
 
-**Corpus size.** Start at hundreds of passages, not thousands. A small set of convincing near-misses is harder and more instructive than a large pile of unrelated text. Grow only if a pilot shows the extra material produces useful failures.
+**Corpus size.** Start at hundreds of chunks, not thousands. A small set of convincing near-misses is harder and more instructive than a large pile of unrelated text. Grow only if a pilot shows the extra material produces useful failures.
 
 **Where the difficulty floor sits.** The first meaningful win should be reachable in about five minutes, then the curve should steepen. Tune after building.
 
@@ -61,7 +63,7 @@ Participants get a working but deliberately weak Qdrant retrieval setup. They ed
 
 ## The Corpus
 
-Build the evidence relationships first. They are the curriculum; passage count is a scale choice.
+Build the evidence relationships first. They are the curriculum; chunk count is a scale choice.
 
 The trap to avoid: assigning invented dates and supersession chains to real contract text does not make the underlying language support those relationships. If the right answer is right only because a metadata field says so, participants learn to obey our database instead of reading evidence.
 
@@ -70,14 +72,14 @@ Build order:
 1. Author three to five explicitly fictional matters.
 2. Write the amendment, dependency, and applicability histories so the language itself carries the relationship. An amendment must actually read as superseding the clause it supersedes.
 3. Bring in authentic excerpts (CUAD is the candidate: 510 real commercial contracts, clause-level spans, CC BY 4.0) only where they stay coherent with the constructed history. Never imply an invented amendment history describes the real agreement.
-4. Add unrelated passages and misleading memo families only after the core cases work.
+4. Add unrelated chunks and misleading memo families only after the core cases work.
 5. Label everything as fictional workshop material.
 
 Three case constructions carry the domain weight:
 
 **Historical applicability.** A later amendment sits near an earlier governing provision. The question is dated before the amendment applies. A recency boost now has an observable failure case.
 
-**Evidence dependency.** The answer needs both an operative clause and a referenced definition or exception. One attractive passage is not enough.
+**Evidence dependency.** The answer needs both an operative clause and a referenced definition or exception. One attractive chunk is not enough.
 
 **Authority versus repetition.** A duplicated memo family sits alongside the instrument it discusses. Deduplicating by identifier alone should not solve it; recognizing the authority relationship should.
 
@@ -95,7 +97,7 @@ Three published dimensions:
 
 Rank on controlling evidence first, ranking quality second. Display both.
 
-Define relevance at the level the exercise cares about, and write it down before annotating: which passages count as evidence from a controlling document, whether one of two necessary provisions earns partial credit, how duplicate memo copies contribute, and how genuinely alternative evidence is labeled. Annotation choices will otherwise dominate the apparent effect of tuning.
+Define relevance at the level the exercise cares about, and write it down before annotating: which chunks count as evidence from a controlling document, whether one of two necessary provisions earns partial credit, how duplicate memo copies contribute, and how genuinely alternative evidence is labeled. Annotation choices will otherwise dominate the apparent effect of tuning.
 
 A superseded document is essential to a historical question. "Old material returned" is not inherently a failure, and the scorer must encode that.
 
@@ -107,7 +109,7 @@ Soft selection. Finalize after the corpus exists and we have measured which ones
 
 **Silent bugs:**
 
-- `avg_len` left at a document-length default on short clause passages. BM25 and miniCOIL do not compute this server-side, and the default misweights short fields. Little known, no error, real effect. This is the best candidate we have.
+- `avg_len` left at a document-length default on short clause chunks. BM25 and miniCOIL do not compute this server-side, and the default misweights short fields. Little known, no error, real effect. This is the best candidate we have.
 - Sparse vector created without the IDF modifier, so boilerplate scores as highly as distinctive terms.
 - Dense vectors queried against the wrong distance metric for how they were stored.
 - Query embedded without the model's required prefix, where the chosen model needs one.
@@ -125,11 +127,11 @@ Checked against the live skills registry and docs on 2026-09-13.
 
 Multiple named dense vectors of different dimensions coexist in one collection, and a query selects one with `using`. Multivectors are configured with `models.MultiVectorConfig(comparator=models.MultiVectorComparator.MAX_SIM)`; MaxSim returns one combined score per point. The late-interaction rescore pattern is a `prefetch` for broad candidates followed by the multivector as the main `query` with `using="colbert"`. Fusion offers RRF, with tunable `k` and per-prefetch weights, and DBSF, which normalizes score distributions using three-sigma endpoints. `FormulaQuery` supports `ExpDecayExpression` over a `DatetimeKeyExpression` on a payload date field; calibrate the decay weight against the scale of the fused score, because decay returns values in zero to one while RRF scores are much smaller.
 
-Cloud Inference embeds both stored documents and queries through the same interface, enabled with `cloud_inference=True` on the client, and handles query and passage prefixes automatically. Dense and image models are documented; the model list lives in the Inference tab of the Cluster Detail page in the Cloud Console, not in the docs.
+Cloud Inference embeds both stored documents and queries through the same interface, enabled with `cloud_inference=True` on the client, and handles query and chunk prefixes automatically. Dense and image models are documented; the model list lives in the Inference tab of the Cluster Detail page in the Cloud Console, not in the docs.
 
 Sparse model options are BM25 (cross-domain, long text, needs per-language tokenization, stemming, and stopwords), BM42 (short chunks, English only, no longer maintained), miniCOIL (adds contextual word meaning, English only, needs FastEmbed), and SPLADE++ (term expansion, heavier).
 
-Two constraints worth respecting. Co-locating large multivectors with dense vectors degrades all queries at scale, with reports of 13 seconds dropping to 2 after removing ColBERT at millions of points; put large vectors on disk. Our corpus is hundreds to low thousands of passages, so this will not bite, but do not let the corpus grow without rechecking. On Qdrant 1.18 and earlier, IDF statistics are computed over the whole shard, which distorts scoring in multi-tenant collections; 1.19 and later support per-tenant IDF. This matters if matters are modeled as tenants.
+Two constraints worth respecting. Co-locating large multivectors with dense vectors degrades all queries at scale, with reports of 13 seconds dropping to 2 after removing ColBERT at millions of points; put large vectors on disk. Our corpus is hundreds to low thousands of chunks, so this will not bite, but do not let the corpus grow without rechecking. On Qdrant 1.18 and earlier, IDF statistics are computed over the whole shard, which distorts scoring in multi-tenant collections; 1.19 and later support per-tenant IDF. This matters if matters are modeled as tenants.
 
 **To confirm during the build**, because the fetched docs did not show them: the exact syntax for the sparse IDF modifier at collection creation, and whether Cloud Inference covers sparse and late-interaction models or only dense and image. If Cloud Inference does not cover sparse and ColBERT, those vectors must be computed at ingest time with FastEmbed, which is fine because ingest is ours, but query-side sparse and ColBERT embedding would then need a local model and that changes the setup story.
 
@@ -138,8 +140,8 @@ Two constraints worth respecting. Co-locating large multivectors with dense vect
 Status as of 14 September 2026. Everything below is built and verified unless marked otherwise.
 
 1. Done. Corpus and evidence relationships, with thirty-seven questions adjudicated rather than the dozen planned. `workshop/corpus.py`, `workshop/validation.py`, `workshop/heldout.py`.
-2. Done. Ingest to Qdrant Cloud with six representations. Two of them, `dense_strong` and `splade`, are declared and wait on cluster billing. `workshop/ingest.py`, `workshop/clausebank.py`.
-3. Done. `workshop/lab.py`, one editable file with a stable `retrieve()` signature, and `workshop/bench.py --parity` proves the benchmark runs the same query.
+2. Done. Ingest to Qdrant Cloud with six representations. Two of them, `mxbai_large_v1` and `splade_pp_v1`, are declared and wait on cluster billing. `workshop/ingest.py`, `workshop/clausebank.py`.
+3. Done. `lab.py` at the top of the repository, one editable file with a stable `retrieve()` signature, and `workshop/bench.py --parity` proves the benchmark runs the same query.
 4. Done. `workshop/app.py`, standard library only, Qdrant palette, playbook panel, baseline comparison, and diagnostics that report execution rather than correctness.
 5. Done. Twelve calibration questions chosen by measured sensitivity, run by `workshop/run.py score`.
 6. Done. Seventeen held-out questions, kept out of the participant tree by `scripts/ship.py` rather than by encryption, and the scorer in `workshop/score.py`.

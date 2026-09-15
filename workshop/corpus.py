@@ -68,7 +68,7 @@ MATTERS = {
     },
 }
 
-PASSAGES = []
+CHUNKS = []
 
 
 def add(
@@ -87,7 +87,7 @@ def add(
     family=None,
     references=(),
 ):
-    """Append one passage. Dates are ISO strings; Qdrant filters them as datetimes."""
+    """Append one chunk. Dates are ISO strings; Qdrant filters them as datetimes."""
     m = MATTERS[matter]
     executed = executed or m["executed"]
     effective_from = effective_from or m["effective"]
@@ -95,7 +95,7 @@ def add(
         date.fromisoformat(value)
         if label == "effective_to" and value != OPEN and value <= effective_from:
             raise ValueError(f"{matter}-{pid}: effective_to must follow effective_from")
-    PASSAGES.append(
+    CHUNKS.append(
         {
             "passage_id": f"{matter}-{pid}",
             "matter_id": matter,
@@ -355,7 +355,7 @@ for key, m in MATTERS.items():
         )
 
 # Harbor's Section 11.1 is the one replaced by amendment. Close its window.
-for p in PASSAGES:
+for p in CHUNKS:
     if p["passage_id"] == "harbor-cure":
         p["effective_to"] = "2026-04-01"
         p["status"] = "superseded"
@@ -870,4 +870,4 @@ for n, (label, when, author) in enumerate(
     )
 
 
-BY_ID = {p["passage_id"]: p for p in PASSAGES}
+BY_ID = {p["passage_id"]: p for p in CHUNKS}

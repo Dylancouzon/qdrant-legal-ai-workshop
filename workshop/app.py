@@ -1,31 +1,69 @@
-"""The lab in a browser. Reading ranked passages in a bar beats reading a terminal.
+"""The lab in a browser. Reading ranked chunks in a bar beats reading a terminal.
 
     uv run python -m workshop.app
 
 Serves on http://localhost:8000. Standard library only, one process per
-participant, no framework. The playbook panel is the reason this exists: the
-applicability rules render here and appear nowhere in the repository.
+participant, no framework.
+
+The first screen is the agent. A question goes in, the answer comes back, and
+the chunks the answer was built from sit under it with their client, their
+dates, and their source marked. That order is the argument of the evening: the
+answer looks the same whether or not the evidence was safe, so a person has to
+read the evidence. The playbook panel is the other reason this exists, because
+the applicability rules render here and appear nowhere in the repository.
+
+Measurement is one click away, not first. The board scores the twelve supplied
+cases, carries the two challenges, and every row opens into the same two things.
+It re-reads lab.py on every run, so an edit lands without restarting the server.
 """
 
+import datetime
 import http.server
+import html
 import json
-import re
-import socketserver
 import urllib.parse
-from pathlib import Path
-from . import lab
-from .client import connect, collection
-from .playbook import RULES
+from . import agent
+from .display import client_name
+from .client import collection, connect, lab, representations
+from .playbook import SECTIONS
 from .questions import CALIBRATION, MATTERS, PROBES
-from .score import score_all, K
+from .score import remember, score_all, K
 
 PORT = 8000
-STATE = Path(__file__).resolve().parents[1] / ".workshop" / "baseline.json"
+
+CASE_TITLES = {
+    "harbor-cure-before": "Cure Period Before the Amendment",
+    "harbor-liability-cap": "Patient Data Liability Cap",
+    "harbor-retention": "Patient Record Retention",
+    "cedar-service-credit": "Planned Maintenance Outage",
+    "atlas-rejection-before": "Rejected Parts Before the Amendment",
+    "atlas-rejection-boundary": "Rejected Parts on the Changeover Date",
+    "atlas-substitution-approved": "Connector Approval",
+    "harbor-retention-earlier": "The Earlier Retention Schedule",
+    "harbor-dispute-pauses-cure": "Does a Dispute Stop the Cure Clock?",
+    "cedar-credit-deadline": "Late Service Credit Claim",
+    "cedar-exit-midterm": "Leaving Midterm",
+    "cedar-subcontractor": "Using a Subcontractor",
+    "atlas-substitution-conditions": "Conditions on Connector Approval",
+    "atlas-inspection-result": "First-Article Inspection Result",
+}
+
+COLUMNS = [
+    ("Score", "This case out of 100: its evidence found and its order, over the share of the "
+              "five slots a lawyer could rely on."),
+    ("Evidence Found", "Controlling chunks you retrieved. The largest part of the score."),
+    ("Order", "How well the graded results were ordered. It also falls when a controlling chunk is missing, so it moves with Evidence Found."),
+    ("Wrong Client", "Chunks from another client's files."),
+    ("Not in Effect", "This client's chunks that were not in effect on the question date."),
+    ("Duplicate", "Rank slots taken by a repeat copy of a document you already returned."),
+]
+# The counts say how many slots a case wasted. They never say which chunk wasted
+# them, so the diagnosis is still reading the five chunks.
 
 STYLE = """
 :root {
   --amaranth: #DC244C; --neon: #6047FF; --ink: #0B0B19; --paper: #FFFFFF;
-  --muted: #5A5A6E; --line: #E4E4EC; --wash: #F7F7FA;
+  --muted: #5A5A6E; --line: #E4E4EC; --wash: #F7F7FA; --good: #147A4A;
 }
 * { box-sizing: border-box; }
 body {
@@ -33,52 +71,104 @@ body {
   font-family: "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   font-weight: 400; line-height: 1.55;
 }
-header {
-  background: var(--ink); color: var(--paper); padding: 18px 24px;
-  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
-}
-header h1 { font-size: 17px; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
-header .mark { width: 10px; height: 10px; border-radius: 50%; background: var(--amaranth); }
-header span { color: #9B9BB0; font-size: 13px; }
-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; padding: 24px; max-width: 1240px; }
+header { background: var(--ink); color: var(--paper); padding: 16px 24px 18px; }
+header .brand { color: #9B9BB0; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+header .brand::before { content: ""; display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--amaranth); margin-right: 9px; }
+header h1 { font-size: 21px; font-weight: 500; margin: 5px 0 0; letter-spacing: -0.02em; }
+header .frame { color: #9B9BB0; font-size: 12.5px; margin: 7px 0 0; max-width: 780px; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 26px;
+  padding: 22px 24px; max-width: 1240px; margin: 0 auto; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-h2 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
-     color: var(--muted); margin: 0 0 12px; }
-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-input[type=text] { flex: 1 1 320px; }
-input, select, button {
-  font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px;
+h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 10px; }
+label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+input, select, button, textarea {
+  font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--paper); color: var(--ink);
 }
-button { background: var(--ink); color: var(--paper); border-color: var(--ink); cursor: pointer; font-weight: 500; }
-button.ghost { background: var(--paper); color: var(--ink); }
+input, select, textarea { width: 100%; }
+textarea { min-height: 64px; resize: vertical; line-height: 1.4; }
+.field { margin-bottom: 10px; }
+.field-row { display: grid; grid-template-columns: 1fr 170px; gap: 10px; }
+@media (max-width: 620px) { .field-row { grid-template-columns: 1fr; } }
+button { background: var(--ink); color: var(--paper); border-color: var(--ink); cursor: pointer;
+  font-weight: 500; width: auto; }
+button.ghost { background: var(--paper); color: var(--ink); border-color: var(--line); }
 button:hover { background: var(--neon); border-color: var(--neon); color: var(--paper); }
-.passage { border: 1px solid var(--line); border-left: 3px solid var(--line);
-           border-radius: 8px; padding: 13px 15px; margin-bottom: 10px; }
-.passage.flagged { border-left-color: var(--amaranth); }
-.passage .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.passage .rank { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
-.passage .title { font-weight: 500; }
-.passage .meta { color: var(--muted); font-size: 12.5px; margin: 3px 0 7px; }
-.passage p { margin: 0; font-size: 14px; }
+button[disabled] { opacity: .45; cursor: default; }
+.micro { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.msg { border-radius: 12px; padding: 12px 15px; margin-bottom: 10px; }
+.msg .who { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); margin-bottom: 5px; }
+.msg.user { background: var(--wash); }
+.msg.user p { margin: 0; font-size: 15px; }
+.parties { display: flex; gap: 26px; flex-wrap: wrap; margin-bottom: 11px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.parties span { font-size: 13.5px; }
+.parties em { display: block; font-style: normal; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin-bottom: 2px; }
+.msg.bot { border: 1px solid var(--line); }
+.msg.bot .answer { white-space: pre-wrap; font-size: 14.5px; }
+.msg.bot cite { font-style: normal; background: #EFECFF; border-radius: 4px; padding: 0 4px;
+  color: var(--neon); font-weight: 500; }
+.msg.bot cite.ghosted { background: #FFE4EA; color: var(--amaranth); }
+.warn { color: var(--amaranth); font-size: 12.5px; margin-top: 9px; }
+.evhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  flex-wrap: wrap; margin: 20px 0 10px; }
+.evhead h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 0; }
+.chunk { border: 1px solid var(--line); border-left: 3px solid var(--line);
+         border-radius: 8px; padding: 12px 14px; margin-bottom: 9px; background: var(--paper); }
+.chunk.cited { border-left-color: var(--neon); }
+.chunk .head { display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; }
+.chunk .rank { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.chunk .title { font-weight: 500; }
+.chunk .meta { color: var(--muted); font-size: 12.5px; margin: 3px 0 7px; }
+.chunk .owner { color: var(--ink); font-weight: 500; }
+.chunk p { margin: 0; font-size: 14px; }
 .tag { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
        padding: 2px 7px; border-radius: 100px; border: 1px solid var(--line); color: var(--muted); }
-.tag.bad { background: var(--amaranth); border-color: var(--amaranth); color: var(--paper); }
 .tag.old { background: var(--wash); }
-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px;
-     text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; }
-td { padding: 6px 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.tag.used { background: var(--neon); border-color: var(--neon); color: var(--paper); }
+.cta { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px;
+  display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.cta span { color: var(--muted); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11.5px;
+     text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; vertical-align: bottom; }
+td { padding: 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums;
+     vertical-align: top; }
+tr.case { cursor: pointer; }
+tr.case:hover td, tr.case.open td { background: var(--wash); }
+tr.total td { border-top: 2px solid var(--line); font-weight: 600; }
 td.q { font-variant-numeric: normal; }
+td.q strong { display: block; font-weight: 500; }
+td.q strong::before { content: "\\25B8  "; color: var(--muted); }
+tr.case.open td.q strong::before { content: "\\25BE  "; }
+td.q small { color: var(--muted); display: block; line-height: 1.35; margin-top: 2px; }
+td.full { color: var(--good); font-weight: 600; }
+td.none { color: var(--good); }
+td.bad { color: var(--amaranth); font-weight: 600; }
+td.detail { background: var(--wash); padding: 14px 16px 6px; }
+.section-head th { padding-top: 16px; font-size: 11px; }
+.scorecards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px;
+  max-width: 340px; }
+.scorecard { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.scorecard b { display: block; font-size: 19px; }
+.scorecard span { color: var(--muted); font-size: 11px; }
 .delta.up { color: #1B7F4B; } .delta.down { color: var(--amaranth); }
 aside { border-left: 1px solid var(--line); padding-left: 22px; }
 @media (max-width: 900px) { aside { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 22px; } }
-aside article { margin-bottom: 16px; }
-aside h3 { font-size: 14px; font-weight: 500; margin: 0 0 4px; }
-aside h3::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-                   background: var(--neon); margin-right: 8px; vertical-align: middle; }
-aside p { margin: 0; font-size: 13px; color: var(--muted); }
-.diag { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line);
+aside .intro { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.principle { border-top: 1px solid var(--line); padding: 11px 0 7px; }
+.principle h3 { font-size: 14px; margin: 0 0 3px; }
+.principle > p { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+details { padding: 4px 0; }
+summary { cursor: pointer; font-size: 13px; font-weight: 500; }
+details p { margin: 5px 0 4px 17px; color: var(--muted); font-size: 12.5px; }
+.diag { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line);
         margin-top: 18px; padding-top: 12px; }
 .empty { color: var(--muted); font-size: 14px; }
 """
@@ -86,96 +176,311 @@ aside p { margin: 0; font-size: 13px; color: var(--muted); }
 PAGE = """<title>Legal Retrieval Lab</title>
 <style>%(style)s</style>
 <header>
-  <span class="mark"></span>
-  <h1>Legal Retrieval Lab</h1>
-  <span>edit workshop/lab.py, then run again</span>
+  <div class="brand">Qdrant Legal Retrieval Lab</div>
+  <h1>The Agent Can Only Answer From What You Retrieve</h1>
+  <p class="frame">You run retrieval at the firm, whose store holds every client's files.</p>
 </header>
 <main>
   <section>
-    <h2>Ask</h2>
-    <form id="ask">
-      <input type="text" id="q" value="%(example)s" />
-      <select id="m">%(matters)s</select>
-      <input type="text" id="d" value="2026-01-20" size="10" />
-      <button>Retrieve</button>
-      <button type="button" class="ghost" id="run">Score calibration</button>
-    </form>
-    <div id="out" class="empty">Retrieve a question, or score the calibration set.</div>
+    <div id="askview">
+      <div class="field"><select id="case">%(cases)s<option value="">Write your own question</option></select></div>
+      <div id="own" hidden>
+        <div class="field-row">
+          <div class="field"><label for="m">Client file</label><select id="m">%(matters)s</select></div>
+          <div class="field"><label for="d">As of</label><input type="date" id="d" value="%(today)s" /></div>
+        </div>
+        <div class="field"><textarea id="q" placeholder="Ask about this client's contracts"></textarea></div>
+        <p class="micro">Your own questions are never scored. The twelve cases are.</p>
+      </div>
+      <div id="thread"></div>
+      <div class="actions"><button id="go">Ask the Agent</button></div>
+      <div id="out"></div>
+      <div class="cta">
+        <span>One answer shows you what broke. Twelve show you how much.</span>
+        <button id="run">Run All 12 Cases</button>
+      </div>
+    </div>
+    <div id="boardview" hidden>
+      <div class="actions" style="margin:0 0 16px">
+        <button class="ghost" id="back">Back to Asking</button>
+        <button id="rerun">Run Again</button>
+        <span class="micro" id="runnote">Open a case to read its chunks and ask the agent.</span>
+      </div>
+      <div id="cards"></div>
+      <table id="board"></table>
+    </div>
     <div class="diag" id="diag"></div>
   </section>
   <aside>
-    <h2>Applicability playbook</h2>
+    <h2>Evidence Playbook</h2>
+    <p class="intro">What safe evidence looks like. Open a rule when a result makes it relevant.</p>
     %(rules)s
   </aside>
 </main>
 <script>
 const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const CASES = %(case_data)s;
+const COLUMNS = %(columns)s;
+const state = {};   // question_id -> {chunks, agent, running}
+let scores = null;
 
-function passages(rows, matter) {
-  if (!rows.length) return '<div class="empty">Nothing came back.</div>';
-  return rows.map((r, i) => {
+/* ---------- the answer, then what it was built from ---------- */
+
+function bubble(s) {
+  if (s.running) return '<div class="msg bot"><span class="who">Agent</span><div class="answer">Reading the chunks...</div></div>';
+  if (!s.agent) return '';
+  if (s.agent.error) return `<div class="msg bot"><span class="who">Agent</span><div class="warn">${esc(s.agent.error)}</div></div>`;
+  const marked = esc(s.agent.reply).replace(/\\[(\\d+)\\]/g, (m, n) =>
+    `<cite class="${s.agent.cited.includes(+n) ? '' : 'ghosted'}">[${n}]</cite>`);
+  const warn = s.agent.invented.length
+    ? `<div class="warn">Cites ${s.agent.invented.map(n => '[' + n + ']').join(', ')}, which was never retrieved.</div>`
+    : '';
+  return `<div class="msg bot"><span class="who">Agent &middot; one call, no retries, only these chunks</span>
+    <div class="answer">${marked}</div>${warn}</div>`;
+}
+
+function chunks(s) {
+  const cited = (s.agent && s.agent.cited) || [];
+  return s.chunks.map((r, i) => {
     const tags = [];
-    if (r.matter_id !== matter) tags.push(`<span class="tag bad">another client &middot; ${esc(r.matter_name)}</span>`);
+    if (cited.includes(i + 1)) tags.push('<span class="tag used">cited</span>');
     if (r.superseded) tags.push(`<span class="tag old">superseded ${esc(r.effective_to)}</span>`);
     tags.push(`<span class="tag">${esc(r.instrument_type)}</span>`);
-    return `<div class="passage ${r.matter_id !== matter ? 'flagged' : ''}">
+    const klass = cited.includes(i + 1) ? 'cited' : '';
+    return `<div class="chunk ${klass}">
       <div class="head"><span class="rank">${i + 1}</span>
       <span class="title">${esc(r.document_title)} s.${esc(r.section_id)}</span>${tags.join(' ')}</div>
-      <div class="meta">${esc(r.heading)} &middot; in force from ${esc(r.effective_from)}</div>
+      <div class="meta"><span class="owner">${esc(r.client)}</span> &middot; ${esc(r.heading)}
+      &middot; in effect from ${esc(r.effective_from)}</div>
       <p>${esc(r.text)}</p></div>`;
   }).join('');
 }
 
-function table(d) {
-  const delta = (now, was) => {
-    if (was === null || was === undefined) return '';
-    const diff = now - was;
-    if (Math.abs(diff) < 0.005) return '';
-    return `<span class="delta ${diff > 0 ? 'up' : 'down'}">${diff > 0 ? '+' : ''}${diff.toFixed(2)}</span>`;
-  };
-  const rows = d.rows.map(r => `<tr><td class="q">${esc(r.question_id)}</td>
-    <td>${r.coverage.toFixed(2)} ${delta(r.coverage, (d.baseline_rows || {})[r.question_id])}</td>
-    <td>${r.ranking.toFixed(2)}</td><td>${r.tenant_leaks}</td>
-    <td>${r.temporal_violations}</td><td>${r.duplicate_families}</td></tr>`).join('');
-  const probes = d.probes.map(r => `<tr><td class="q">${esc(r.question_id)}</td>
-    <td>${r.coverage.toFixed(2)}</td><td colspan="4">not scored &middot; missing ${esc(r.missing.join(', '))}</td></tr>`).join('');
-  return `<table><tr><th>question</th><th>cover</th><th>rank</th><th>leak</th><th>stale</th><th>dup</th></tr>
-    ${rows}
-    <tr><td><b>${d.solved}/${d.questions} solved</b></td><td><b>${d.coverage.toFixed(2)}</b>
-    ${delta(d.coverage, d.baseline_coverage)}</td><td><b>${d.ranking.toFixed(2)}</b></td>
-    <td><b>${d.tenant_leaks}</b></td><td><b>${d.temporal_violations}</b></td><td><b>${d.duplicate_families}</b></td></tr>
-    <tr><th colspan="6" style="padding-top:14px">ceiling probes, shown and never scored</th></tr>
-    ${probes}</table>`;
+function evidence(s) {
+  if (!s || !s.chunks) return '';
+  if (!s.chunks.length) return '<p class="empty">Nothing came back, so the agent had nothing to answer from.</p>';
+  const head = s.agent && !s.agent.error
+    ? 'The five chunks the answer was built from' : 'The five chunks retrieved';
+  return `<div class="evhead"><h3>${head}</h3></div>` + chunks(s);
 }
 
-$('#ask').onsubmit = async e => {
-  e.preventDefault();
-  $('#out').innerHTML = '<div class="empty">Retrieving...</div>';
-  const m = $('#m').value;
-  const r = await fetch(`/api/ask?q=${encodeURIComponent($('#q').value)}&m=${m}&d=${$('#d').value}`);
-  const d = await r.json();
-  $('#out').innerHTML = d.error ? `<div class="empty">${esc(d.error)}</div>` : passages(d.passages, m);
-  $('#diag').textContent = d.diagnostics || '';
+/* ---------- the ask view ---------- */
+
+let view = null;
+
+function picked() {
+  const c = CASES[$('#case').value];
+  if (c) return {question: c.question, matter_id: c.matter_id, matter_name: c.matter_name,
+                 counterparty: c.counterparty, as_of: c.as_of};
+  const select = $('#m'), any = Object.values(CASES).find(x => x.matter_id === select.value);
+  return {question: $('#q').value.trim(), matter_id: select.value,
+          matter_name: select.selectedOptions[0].text,
+          counterparty: any ? any.counterparty : '', as_of: $('#d').value};
+}
+
+function render() {
+  if (!view) { $('#thread').innerHTML = ''; $('#out').innerHTML = ''; return; }
+  $('#thread').innerHTML = `<div class="msg user">
+    <div class="parties">
+      <span><em>Client asking</em>${esc(view.matter_name)}</span>
+      <span><em>About their supplier</em>${esc(view.counterparty)}</span>
+      <span><em>As of</em>${esc(view.as_of)}</span>
+    </div>
+    <p>${esc(view.question)}</p></div>` + bubble(view);
+  $('#out').innerHTML = view.error ? `<p class="empty">${esc(view.error)}</p>` : evidence(view);
+  $('#go').textContent = view.agent ? 'Ask Again' : 'Ask the Agent';
+  $('#go').disabled = !!view.running;
+}
+
+$('#case').onchange = () => {
+  const c = CASES[$('#case').value];
+  $('#own').hidden = !!c;
+  view = c ? picked() : null;
+  if (!c) $('#q').focus();
+  render();
 };
-$('#run').onclick = async () => {
-  $('#out').innerHTML = '<div class="empty">Scoring twelve questions...</div>';
+
+$('#go').onclick = async () => {
+  const next = picked();
+  if (!next.question) return $('#q').focus();
+  view = next;
+  view.running = true;
+  render();
+  const d = await (await fetch('/api/ask?answer=1&q=' + encodeURIComponent(view.question)
+    + '&m=' + view.matter_id + '&d=' + view.as_of)).json();
+  view.running = false;
+  if (d.error) view.error = d.error;
+  else { view.chunks = d.chunks; view.agent = d.agent; }
+  $('#diag').textContent = d.diagnostics || '';
+  render();
+};
+
+/* ---------- the calibration board ---------- */
+
+function header() {
+  return '<tr><th>Case</th>' + COLUMNS.map(c =>
+    `<th title="${esc(c[1])}">${esc(c[0])}</th>`).join('') + '</tr>';
+}
+
+const COUNTS = ['tenant_leaks', 'temporal_violations', 'duplicate_families'];
+
+function countCells(r) {
+  return COUNTS.map(k => `<td class="${r[k] ? 'bad' : 'none'}">${r[k]}</td>`).join('');
+}
+
+function cells(id) {
+  const r = scores && scores.rows[id];
+  if (!r) return COLUMNS.map(() => '<td>&mdash;</td>').join('');
+  const was = scores.previous && scores.previous[id];
+  const arrow = was !== undefined && was !== null && Math.abs(r.score - was) > 0.5
+    ? `<span class="delta ${r.score > was ? 'up' : 'down'}">${
+        r.score > was ? '\\u25B2' : '\\u25BC'}</span>` : '';
+  return `<td class="${r.score === 100 ? 'full' : ''}"><b>${r.score}</b> ${arrow}</td>`
+    + `<td class="${r.found === r.controlling ? 'full' : ''}">${r.found} of ${r.controlling}</td>`
+    + `<td>${r.ranking.toFixed(2)}</td>` + countCells(r);
+}
+
+function probeCells(id) {
+  const r = scores && scores.probes[id];
+  if (!r) return COLUMNS.map(() => '<td>&mdash;</td>').join('');
+  return `<td class="${r.found === r.controlling ? 'full' : 'micro'}">${
+      r.found === r.controlling ? 'solved' : 'open'}</td>`
+    + `<td class="${r.found === r.controlling ? 'full' : ''}">${r.found} of ${r.controlling}</td>`
+    + `<td>${r.ranking.toFixed(2)}</td>` + countCells(r);
+}
+
+function totalRow() {
+  if (!scores) return '';
+  return `<tr class="total"><td class="q"><strong>All twelve scored cases</strong></td>
+    <td><b>${scores.score}</b></td><td>${Math.round(scores.coverage * 100)}%%</td>
+    <td>${scores.ranking.toFixed(2)}</td>`
+    + COUNTS.map(k => `<td class="${scores[k] ? 'bad' : 'none'}">${scores[k]}</td>`).join('')
+    + '</tr>';
+}
+
+function board() {
+  const row = id => `<tr class="case" data-id="${id}"><td class="q">
+      <strong>${esc(CASES[id].title)}</strong>
+      <small>${esc(CASES[id].matter_name)}, about ${esc(CASES[id].counterparty)}
+      &middot; as of ${CASES[id].as_of}</small></td>
+    ${CASES[id].probe ? probeCells(id) : cells(id)}</tr>
+    <tr class="detail-row" data-for="${id}" hidden><td class="detail" colspan="7"></td></tr>`;
+  const ids = Object.keys(CASES);
+  $('#board').innerHTML = header() + ids.filter(id => !CASES[id].probe).map(row).join('')
+    + totalRow()
+    + '<tr class="section-head"><th colspan="7">Challenge &middot; nothing we tried reaches the '
+    + 'evidence for these two, so they are shown and never scored. Solve one and the count '
+    + 'turns.</th></tr>'
+    + ids.filter(id => CASES[id].probe).map(row).join('');
+}
+
+function cards() {
+  if (!scores) return;
+  $('#cards').innerHTML = `<div class="scorecards">
+    <div class="scorecard"><b>${scores.score}</b><span>Score out of 100</span></div>
+    <div class="scorecard"><b>${scores.solved}/${scores.questions}</b><span>Cases Solved</span></div>
+  </div><p class="micro">The starter searches the whole collection, and approximate search
+  returns a slightly different set each run, so its score moves a point or two on its own.
+  Once you scope the search, the number is steady.</p>`;
+}
+
+function paint(id) {
+  const cell = document.querySelector(`tr.detail-row[data-for="${id}"] td`);
+  if (!cell) return;
+  const s = state[id] || {};
+  cell.innerHTML = s.error ? `<p class="empty">${esc(s.error)}</p>`
+    : (s.chunks ? bubble(s) + evidence(s)
+        + `<div class="actions" style="margin:0 0 12px"><button class="ghost" data-ask="${id}" ${
+            s.running ? 'disabled' : ''}>${s.agent ? 'Ask Again' : 'Ask the Agent'}</button></div>`
+      : '<p class="empty">Retrieving...</p>');
+}
+
+async function load(id) {
+  state[id] = {};
+  paint(id);
+  const d = await (await fetch('/api/ask?case=' + encodeURIComponent(id))).json();
+  state[id] = d.error ? {error: d.error} : {chunks: d.chunks};
+  $('#diag').textContent = d.diagnostics || $('#diag').textContent;
+  paint(id);
+}
+
+async function askCase(id) {
+  state[id].running = true;
+  paint(id);
+  const d = await (await fetch('/api/ask?answer=1&case=' + encodeURIComponent(id))).json();
+  state[id].running = false;
+  state[id].agent = d.error ? {error: d.error} : d.agent;
+  paint(id);
+}
+
+document.addEventListener('click', e => {
+  const asker = e.target.closest('[data-ask]');
+  if (asker) return askCase(asker.dataset.ask);
+  const row = e.target.closest('tr.case');
+  if (!row) return;
+  const id = row.dataset.id;
+  const detailRow = document.querySelector(`tr.detail-row[data-for="${id}"]`);
+  detailRow.hidden = !detailRow.hidden;
+  row.classList.toggle('open', !detailRow.hidden);
+  if (!detailRow.hidden && !state[id]) load(id);
+});
+
+async function runAll(button) {
+  const started = Date.now();
+  button.disabled = true;
+  const timer = setInterval(() => {
+    $('#runnote').textContent = `Scoring twelve cases \\u00B7 ${Math.floor((Date.now() - started) / 1000)}s`;
+  }, 1000);
   const d = await (await fetch('/api/score')).json();
-  $('#out').innerHTML = d.error ? `<div class="empty">${esc(d.error)}</div>` : table(d);
+  clearInterval(timer);
+  button.disabled = false;
+  $('#runnote').textContent = d.error || 'Open a case to read its chunks and ask the agent.';
+  if (d.error) return;
+  scores = d;
   $('#diag').textContent = d.diagnostics || '';
+  cards();
+  board();
+}
+
+$('#run').onclick = e => {
+  $('#askview').hidden = true;
+  $('#boardview').hidden = false;
+  runAll(e.target);
 };
+$('#rerun').onclick = e => runAll(e.target);
+$('#back').onclick = () => { $('#boardview').hidden = true; $('#askview').hidden = false; };
+
+$('#case').onchange();
+board();
 </script>
 """
 
 
 def diagnostics(qc, name):
     """Explain what the code executed, never whether the answers are right."""
-    info = qc.get_collection(name)
-    present = set(info.config.params.vectors or {}) | set(info.config.params.sparse_vectors or {})
-    used = set(re.findall(r'using="([a-z0-9_]+)"', Path(lab.__file__).read_text()))
-    return (f"lab.py queries {len(used)} of the {len(present)} representations this collection "
-            f"carries ({', '.join(sorted(used))}). Execution only; it says nothing about whether "
-            f"the answers are right.")
+    return (f"Qdrant {qc.info().version}. {representations(qc, name)}. Execution only; "
+            f"it says nothing about whether the answers are right.")
+
+
+CASES = {
+    x["question_id"]: {
+        "title": CASE_TITLES.get(x["question_id"], x["question_id"]),
+        "question": x["question"],
+        "matter_id": x["matter_id"],
+        "matter_name": MATTERS[x["matter_id"]]["name"],
+        "counterparty": MATTERS[x["matter_id"]]["counterparty"],
+        "as_of": x["as_of"],
+        "probe": probe,
+    }
+    for group, probe in ((CALIBRATION, False), (PROBES, True))
+    for x in group
+}
+
+PAYLOAD_FIELDS = (
+    "passage_id", "matter_id", "matter_name", "document_title", "section_id",
+    "heading", "text", "instrument_type", "effective_from", "effective_to", "source_family",
+)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -197,70 +502,97 @@ class Handler(http.server.BaseHTTPRequestHandler):
         route = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(route.query)
         if route.path == "/":
-            rules = "".join(
-                f"<article><h3>{title}</h3><p>{body}</p></article>" for title, body in RULES
-            )
-            matters = "".join(
-                f'<option value="{k}">{v}</option>' for k, v in MATTERS.items()
-            )
-            return self.send(
-                (PAGE % {
-                    "style": STYLE, "rules": rules, "matters": matters,
-                    "example": "how long do we have to put it right before they can walk away?",
-                }).encode(),
-                "text/html",
-            )
+            return self.send(self.index(), "text/html")
         if route.path == "/api/ask":
             return self.send(self.ask(query))
         if route.path == "/api/score":
             return self.send(self.score())
         self.send_error(404)
 
+    def index(self):
+        rules = "".join(
+            '<section class="principle">'
+            f"<h3>{html.escape(title)}</h3><p>{html.escape(summary)}</p>"
+            + "".join(
+                f"<details><summary>{html.escape(rule_title)}</summary>"
+                f"<p>{html.escape(body)}</p></details>"
+                for rule_title, body in items
+            )
+            + "</section>"
+            for title, summary, items in SECTIONS
+        )
+        matters = "".join(
+            f'<option value="{k}">{v["name"]}</option>' for k, v in MATTERS.items()
+        )
+        cases = "".join(
+            f'<option value="{html.escape(qid)}">{html.escape(case["title"])}</option>'
+            for qid, case in CASES.items() if not case["probe"]
+        )
+        return (PAGE % {
+            "style": STYLE,
+            "rules": rules,
+            "columns": json.dumps(COLUMNS),
+            "case_data": json.dumps(CASES).replace("</", "<\\/"),
+            "cases": cases,
+            "matters": matters,
+            "today": datetime.date.today().isoformat(),
+        }).encode()
+
     def ask(self, query):
-        question = (query.get("q") or [""])[0].strip()
-        matter = (query.get("m") or ["harbor"])[0]
-        as_of = (query.get("d") or ["2026-01-20"])[0]
-        if not question:
-            return {"error": "Type a question."}
+        """Retrieve for one case or one typed question, and optionally answer it."""
+        one = lambda key, default=None: (query.get(key) or [default])[0]
+        case = CASES.get(one("case", ""))
+        if case:
+            question, matter, as_of = case["question"], case["matter_id"], case["as_of"]
+        else:
+            question = (one("q", "") or "").strip()
+            matter, as_of = one("m", "harbor"), one("d", "2026-01-20")
+            if not question:
+                return {"error": "Type a question."}
+            if matter not in MATTERS:
+                return {"error": "Unknown client matter."}
         try:
-            points = lab.retrieve(self.qc, self.name, question, matter, as_of)
+            points = lab().retrieve(self.qc, self.name, question, matter, as_of)
         except Exception as exc:
-            return {"error": f"lab.py raised: {exc}"}
-        return {
-            "passages": [
+            return {"error": f"lab.py raised: {type(exc).__name__}: {exc}"}
+
+        payload = {
+            "chunks": [
                 dict(
-                    {k: p.payload[k] for k in (
-                        "passage_id", "matter_id", "matter_name", "document_title",
-                        "section_id", "heading", "text", "instrument_type",
-                        "effective_from", "effective_to",
-                    )},
+                    {k: p.payload[k] for k in PAYLOAD_FIELDS},
+                    client=client_name(p.payload),
                     superseded=p.payload["effective_to"] != "9999-12-31",
                 )
                 for p in points
             ],
             "diagnostics": diagnostics(self.qc, self.name),
         }
+        if one("answer"):
+            try:
+                reply, cited, invented = agent.answer(points, question, matter, as_of)
+                payload["agent"] = {"reply": reply, "cited": cited, "invented": invented}
+            except RuntimeError as exc:
+                payload["agent"] = {"error": str(exc)}
+        return payload
 
     def score(self):
-        run = lambda q, m, d: [
-            p.payload for p in lab.retrieve(self.qc, self.name, q, m, d, limit=K)
-        ]
         try:
+            current = lab()
+            run = lambda q, m, d: [
+                p.payload for p in current.retrieve(self.qc, self.name, q, m, d, limit=K)
+            ]
             result = score_all(CALIBRATION, run, k=K)
             probes = score_all(PROBES, run, k=K)
         except Exception as exc:
-            return {"error": f"lab.py raised: {exc}"}
+            return {"error": f"lab.py raised: {type(exc).__name__}: {exc}"}
 
-        baseline = json.loads(STATE.read_text()) if STATE.exists() else None
+        keep = ("score", "coverage", "found", "controlling", "ranking", "tenant_leaks",
+                "temporal_violations", "duplicate_families")
+        previous = remember(result)
         payload = {
-            "rows": [
-                {k: r[k] for k in ("question_id", "coverage", "ranking", "tenant_leaks",
-                                   "temporal_violations", "duplicate_families")}
-                for r in result["rows"]
-            ],
-            "probes": [
-                {k: r[k] for k in ("question_id", "coverage", "missing")} for r in probes["rows"]
-            ],
+            "rows": {r["question_id"]: {k: r[k] for k in keep} for r in result["rows"]},
+            "probes": {r["question_id"]: {k: r[k] for k in keep} for r in probes["rows"]},
+            "score": result["score"],
             "solved": result["solved"], "questions": result["questions"],
             "coverage": result["coverage"], "ranking": result["ranking"],
             "tenant_leaks": result["tenant_leaks"],
@@ -268,25 +600,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "duplicate_families": result["duplicate_families"],
             "diagnostics": diagnostics(self.qc, self.name),
         }
-        if baseline:
-            payload["baseline_coverage"] = baseline["coverage"]
-            payload["baseline_rows"] = baseline["rows"]
-        else:
-            # First run of the evening becomes the line everything is measured from.
-            STATE.parent.mkdir(exist_ok=True)
-            STATE.write_text(json.dumps({
-                "coverage": result["coverage"],
-                "rows": {r["question_id"]: r["coverage"] for r in result["rows"]},
-            }))
+        if previous:
+            payload["previous"] = previous
         return payload
 
 
 def main():
     Handler.qc, Handler.name = connect(), collection()
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as server:
+    http.server.ThreadingHTTPServer.allow_reuse_address = True
+    with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as server:
         print(f"Legal Retrieval Lab on http://localhost:{PORT}")
-        print("The applicability playbook is in the right-hand panel. Read it.")
+        print("The Evidence Playbook is in the browser. Read it before tuning.")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

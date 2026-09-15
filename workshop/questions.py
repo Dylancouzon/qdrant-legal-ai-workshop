@@ -25,22 +25,32 @@ tells a team their change did nothing when it did.
 
 from .corpus import MATTERS as _MATTERS
 from .heldout import QUESTIONS as _AUTHORED_B
-from .validation import QUESTIONS as _AUTHORED_A, check
+from .validation import QUESTIONS as _AUTHORED_A
 
-# Matter id to display name. Re-exported so the runners never import the corpus
-# source, whose comments document the case constructions.
-MATTERS = {key: value["name"] for key, value in _MATTERS.items()}
+# Matter id to the client and the supplier on the other side of the agreement.
+# Re-exported so the runners never import the corpus source, whose comments
+# document the case constructions. Both names are for the reader: a question
+# that carries them would identify the matter lexically, which is the failure
+# this corpus is built to produce.
+MATTERS = {
+    key: {"name": value["name"], "counterparty": value["supplier"]}
+    for key, value in _MATTERS.items()
+}
 
 ALL = _AUTHORED_A + _AUTHORED_B
 
 # Measured unreachable: best coverage 0.0 across every configuration tried,
 # including all fusion weightings, DBSF, ColBERT rescore, each signal alone,
 # and a 150-deep candidate pool. Their evidence sits at ranks 8 to 23.
+#
+# Two uplift questions left this list in September 2026. Their wording opened
+# with the client's own name, and removing it put their evidence inside the top
+# five, so they are scored now. Re-measure this list after any question edit:
+# a question that became reachable and stays here is a question nobody is
+# credited for solving.
 HEADROOM_IDS = [
     "harbor-cure-before",
     "harbor-liability-cap",
-    "cedar-uplift-before",
-    "cedar-uplift-later",
     "cedar-uplift-promotional",
     "cedar-renewal-notice",
     "atlas-warranty-modified",
@@ -55,8 +65,8 @@ _RESPONSIVE = [
     "cedar-service-credit",           # matter filter
     "atlas-substitution-approved",    # group by source family
     "atlas-substitution-conditions",  # group by source family
-    "cedar-subcontractor",            # fusion weights
-    "cedar-exit-midterm",             # fusion weights
+    "cedar-subcontractor",            # matter filter
+    "cedar-exit-midterm",             # the second dense vector
 ]
 # Solved by the starter, so the first run shows something working.
 _ALREADY_SOLVED = [

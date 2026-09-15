@@ -4,7 +4,7 @@ CUAD is the Contract Understanding Atticus Dataset: 510 real commercial
 contracts with clause-level spans, published by The Atticus Project under
 CC BY 4.0. https://www.atticusprojectai.org/cuad
 
-These passages keep their own contract name and parties. They are never
+These chunks keep their own contract name and parties. They are never
 presented as part of a fictional matter, and no invented date or amendment
 history is attached to any of them. They are the other clients' files, which
 is exactly what makes a missing matter filter a real failure.
@@ -96,7 +96,7 @@ def _slug(text, fallback):
 
 
 def load(contracts=CONTRACTS):
-    """Return clause passages in the same payload shape as the fictional corpus."""
+    """Return clause chunks in the same payload shape as the fictional corpus."""
     with open(_download(), newline="", encoding="utf-8") as fh:
         csv.field_size_limit(10**7)
         rows = list(csv.DictReader(fh))
@@ -114,7 +114,7 @@ def load(contracts=CONTRACTS):
             usable.append((len(clauses), row, clauses))
     usable.sort(key=lambda x: -x[0])
 
-    passages, used = [], {}
+    chunks, used = [], {}
     for order, (_, row, clauses) in enumerate(usable[:contracts]):
         name = _first(row.get("Document Name")) or "Commercial Agreement"
         matter = _slug(Path(_first(row.get("Filename")) or "").stem, f"contract-{order}")
@@ -130,7 +130,7 @@ def load(contracts=CONTRACTS):
                 continue
             seen.add(text)
             pid = f"cuad-{matter}-{index}"
-            passages.append(
+            chunks.append(
                 {
                     "passage_id": pid,
                     "matter_id": matter,
@@ -152,22 +152,22 @@ def load(contracts=CONTRACTS):
                     "notice": NOTICE,
                 }
             )
-    return passages
+    return chunks
 
 
 def check():
-    passages = load()
-    ids = {p["passage_id"] for p in passages}
-    assert len(ids) == len(passages), "duplicate passage id"
-    matters = {p["matter_id"] for p in passages}
+    chunks = load()
+    ids = {p["passage_id"] for p in chunks}
+    assert len(ids) == len(chunks), "duplicate chunk id"
+    matters = {p["matter_id"] for p in chunks}
     assert len(matters) >= 100, len(matters)
     from .corpus import MATTERS
 
     assert not (matters & set(MATTERS)), "clause bank collides with a fictional matter"
-    for p in passages:
+    for p in chunks:
         assert MIN_WORDS <= len(p["text"].split()) <= MAX_WORDS
         datetime.fromisoformat(p["effective_from"])
-    return f"{len(passages)} clause-bank passages across {len(matters)} real contracts"
+    return f"{len(chunks)} clause-bank chunks across {len(matters)} real contracts"
 
 
 if __name__ == "__main__":

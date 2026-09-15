@@ -17,7 +17,9 @@ QUESTIONS = [
     Q(
         "harbor-cure-after",
         matter="harbor", as_of="2026-06-10",
-        question="Meridian sent us a default letter on 10 June 2026. How long do we have to put it right?",
+question=(
+    "Meridian sent us a default letter on 10 June 2026. How long do we have to put it right?"
+),
         construction="historical applicability",
         controlling=["harbor-am3-2"],
         inapplicable=["harbor-cure", "cedar-cure", "atlas-cure"],
@@ -28,7 +30,7 @@ QUESTIONS = [
     Q(
         "harbor-retention-logs",
         matter="harbor", as_of="2026-09-01",
-        question="How long does Meridian have to keep the system access logs?",
+question="How long does Meridian have to keep the system access logs?",
         construction="authority versus repetition",
         controlling=["harbor-exh-d2"],
         inapplicable=["harbor-exh-d1"],
@@ -43,7 +45,10 @@ QUESTIONS = [
     Q(
         "harbor-retention-earlier",
         matter="harbor", as_of="2025-12-01",
-        question="Under the schedule in force in December 2025, how long did patient files have to be kept?",
+question=(
+    "Under the retention schedule in effect in December 2025, how long did patient files have to "
+    "be kept?"
+),
         construction="historical applicability",
         controlling=["harbor-exh-d1"],
         inapplicable=["harbor-exh-d2"],
@@ -54,7 +59,7 @@ QUESTIONS = [
     Q(
         "harbor-billing-records",
         matter="harbor", as_of="2026-09-01",
-        question="How long do the billing and remittance records for this engagement have to be kept?",
+question="How long do the billing and remittance records for this engagement have to be kept?",
         construction="evidence dependency",
         controlling=["harbor-exh-d2"],
         supporting=["harbor-s7-2"],
@@ -69,7 +74,7 @@ QUESTIONS = [
     Q(
         "harbor-unpaid-fees-cap",
         matter="harbor", as_of="2026-09-01",
-        question="If we simply stop paying, is the most Meridian can claim back one year of fees?",
+question="If we simply stop paying, is the most Meridian can claim back one year of fees?",
         construction="evidence dependency",
         controlling=["harbor-msa-13-1", "harbor-msa-1-14"],
         distractor=["harbor-s5-1", "harbor-msa-13-2"],
@@ -79,7 +84,9 @@ QUESTIONS = [
     Q(
         "harbor-insurance-limit",
         matter="harbor", as_of="2026-09-01",
-        question="Meridian carries five million dollars of cover. Does that mean we can recover five million?",
+question=(
+    "Meridian carries five million dollars of cover. Does that mean we can recover five million?"
+),
         construction="evidence dependency",
         controlling=["harbor-msa-13-1", "harbor-s12-5"],
         distractor=["harbor-msa-13-2", "harbor-s12-1"],
@@ -89,7 +96,7 @@ QUESTIONS = [
     Q(
         "harbor-verbal-change",
         matter="harbor", as_of="2026-09-01",
-        question="Our project manager agreed a scope change on a call. Is Meridian bound by it?",
+question="Our project manager agreed a scope change on a call. Is Meridian bound by it?",
         construction="evidence dependency",
         controlling=["harbor-s2-4", "harbor-s16-6"],
         distractor=["harbor-s16-9", "harbor-s7-4"],
@@ -99,7 +106,7 @@ QUESTIONS = [
     Q(
         "harbor-dispute-pauses-cure",
         matter="harbor", as_of="2026-01-20",
-        question="If we formally raise a dispute, does that stop the clock on fixing the breach?",
+question="If we formally raise a dispute, does that stop the clock on fixing the breach?",
         construction="evidence dependency",
         controlling=["harbor-s14-2", "harbor-cure"],
         inapplicable=["harbor-am3-2"],
@@ -114,7 +121,7 @@ QUESTIONS = [
     Q(
         "cedar-uplift-promotional",
         matter="cedar", as_of="2024-12-01",
-        question="Cedar renews on 15 December 2024. How much can Tessellate put the price up?",
+question="Our renewal lands on 15 December 2024. How much can Tessellate put the price up?",
         construction="historical applicability",
         controlling=["cedar-addendum-a"],
         supporting=["cedar-sub-6-2"],
@@ -126,7 +133,7 @@ QUESTIONS = [
     Q(
         "cedar-uplift-later",
         matter="cedar", as_of="2026-07-01",
-        question="Cedar renews on 1 July 2026. How much can Tessellate put the price up?",
+question="Our renewal lands on 1 July 2026. How much can Tessellate put the price up?",
         construction="historical applicability",
         controlling=["cedar-am1-3"],
         inapplicable=["cedar-sub-6-2", "cedar-addendum-a"],
@@ -137,7 +144,10 @@ QUESTIONS = [
     Q(
         "cedar-credit-customer-fault",
         matter="cedar", as_of="2026-09-01",
-        question="The outage was caused by our own misconfiguration. Do we still get money back?",
+question=(
+    "An outage on our supplier's platform was caused by our own misconfiguration. Do we still get "
+    "money back?"
+),
         construction="evidence dependency",
         controlling=["cedar-sla-4", "cedar-sla-1"],
         distractor=["cedar-sub-9-1"],
@@ -147,7 +157,9 @@ QUESTIONS = [
     Q(
         "cedar-credit-deadline",
         matter="cedar", as_of="2026-09-01",
-        question="We spotted a bad month forty-five days after it ended. Can we still claim?",
+question=(
+    "We spotted a bad month on the platform forty-five days after it ended. Can we still claim?"
+),
         construction="evidence dependency",
         controlling=["cedar-sla-4"],
         supporting=["cedar-sla-1"],
@@ -158,7 +170,9 @@ QUESTIONS = [
     Q(
         "cedar-support-miss",
         matter="cedar", as_of="2026-09-01",
-        question="They missed the one hour response on a critical ticket. What do we actually get?",
+question=(
+    "Our supplier missed the one hour response on a critical ticket. What do we actually get?"
+),
         construction="authority versus repetition",
         controlling=["cedar-sub-9-1"],
         distractor=["cedar-sla-4", "cedar-s14-2"],
@@ -168,7 +182,9 @@ QUESTIONS = [
     Q(
         "cedar-exit-midterm",
         matter="cedar", as_of="2026-09-01",
-        question="Can we get out part way through the year, and how much warning do we give?",
+question=(
+    "Can we get out of the contract part way through the year, and how much warning do we give?"
+),
         construction="evidence dependency",
         controlling=["cedar-convenience"],
         supporting=["cedar-sub-3-1"],
@@ -183,7 +199,7 @@ QUESTIONS = [
     Q(
         "cedar-subcontractor",
         matter="cedar", as_of="2026-09-01",
-        question="Tessellate wants to hand part of the work to another company. Can they?",
+question="Tessellate wants to hand part of the work to another company. Can they?",
         construction="authority versus repetition",
         controlling=["cedar-s8-3"],
         inapplicable=["harbor-s8-3", "atlas-s8-3"],
@@ -194,7 +210,7 @@ QUESTIONS = [
     Q(
         "cedar-logo",
         matter="cedar", as_of="2026-09-01",
-        question="Can Tessellate put our logo on their website as a customer reference?",
+question="Can Tessellate put our logo on their website as a customer reference?",
         construction="authority versus repetition",
         controlling=["cedar-s15-1"],
         inapplicable=["harbor-s15-1", "atlas-s15-1"],
@@ -206,7 +222,10 @@ QUESTIONS = [
     Q(
         "atlas-rejection-later",
         matter="atlas", as_of="2026-08-02",
-        question="A shipment arrived on 2 August 2026 and the parts are wrong. How long to send them back?",
+question=(
+    "A shipment of parts from our supplier landed on 2 August 2026 and the parts are wrong. How "
+    "long do we have to send them back?"
+),
         construction="historical applicability",
         controlling=["atlas-am2-1"],
         inapplicable=["atlas-sup-4-2"],
@@ -217,7 +236,7 @@ QUESTIONS = [
     Q(
         "atlas-connector-b",
         matter="atlas", as_of="2026-02-01",
-        question="As of February 2026, were we cleared to build with the 8841-B connector?",
+question="As of February 2026, were we cleared to build with the 8841-B connector?",
         construction="historical applicability",
         controlling=["atlas-ecn-109"],
         supporting=["atlas-sup-5-3"],
@@ -231,7 +250,7 @@ QUESTIONS = [
     Q(
         "atlas-warranty-twenty-months",
         matter="atlas", as_of="2026-09-01",
-        question="A part failed twenty months after it was delivered. Is it still covered?",
+question="A part failed twenty months after our supplier delivered it. Is it still covered?",
         construction="evidence dependency",
         controlling=["atlas-sup-8-2"],
         supporting=["atlas-sup-8-1"],
@@ -242,7 +261,9 @@ QUESTIONS = [
     Q(
         "atlas-replacement-part",
         matter="atlas", as_of="2026-09-01",
-        question="They replaced a part three months ago and it has failed again. Are we still covered?",
+question=(
+    "Our supplier replaced a part three months ago and it has failed again. Are we still covered?"
+),
         construction="evidence dependency",
         controlling=["atlas-sup-8-2"],
         supporting=["atlas-sup-8-1"],
@@ -253,7 +274,7 @@ QUESTIONS = [
     Q(
         "atlas-flood-payment",
         matter="atlas", as_of="2026-09-01",
-        question="A flood shut our plant. Can we hold off paying Fairweather until we reopen?",
+question="A flood shut our plant. Can we hold off paying Fairweather until we reopen?",
         construction="authority versus repetition",
         controlling=["atlas-s13-4"],
         inapplicable=["harbor-s13-4", "cedar-s13-4"],
@@ -264,7 +285,9 @@ QUESTIONS = [
     Q(
         "atlas-signed-delivery-note",
         matter="atlas", as_of="2026-05-20",
-        question="Our receiving team signed the carrier's delivery note. Does that mean we accepted the goods?",
+question=(
+    "Our receiving team signed the carrier's delivery note. Does that mean we accepted the goods?"
+),
         construction="evidence dependency",
         controlling=["atlas-sup-4-3", "atlas-sup-4-2"],
         inapplicable=["atlas-am2-1"],
@@ -278,7 +301,7 @@ QUESTIONS = [
     Q(
         "atlas-substitution-conditions",
         matter="atlas", as_of="2026-09-01",
-        question="What has to happen before we can put the 8841-C connector into production?",
+question="What has to happen before we can put the 8841-C connector into production?",
         construction="authority versus repetition",
         controlling=["atlas-ecn-114", "atlas-sup-5-3"],
         inapplicable=["atlas-ecn-109"],
@@ -289,7 +312,7 @@ QUESTIONS = [
     Q(
         "atlas-inspection-result",
         matter="atlas", as_of="2026-09-01",
-        question="Did the first article inspection on the new servo connector pass?",
+question="Did the first article inspection on the new servo connector pass?",
         construction="authority versus repetition",
         controlling=["atlas-qa-memo"],
         supporting=["atlas-ecn-114"],
@@ -305,7 +328,9 @@ QUESTIONS = [
     Q(
         "atlas-transition-help",
         matter="atlas", as_of="2026-09-01",
-        question="If we give notice to end the contract, how long will Fairweather help us move the work?",
+question=(
+    "If we give notice to end the contract, how long will Fairweather help us move the work?"
+),
         construction="authority versus repetition",
         controlling=["atlas-s11-7"],
         inapplicable=["harbor-s11-7", "cedar-s11-7"],
