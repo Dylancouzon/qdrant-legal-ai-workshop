@@ -254,6 +254,30 @@ That leaves a decision rather than a fix. `harbor-cure-before` is one of the two
 
 **`preflight` no longer reads constants out of `lab.py`.** It checked inference by looking up `DENSE_VECTOR` and `SPARSE_VECTOR` in the participant's file, so renaming a constant broke the health check that exists to explain breakage. The two model ids are fixed in `run.py` now, and `lab.retrieve` is still called at the end as the real check.
 
+## A full sweep of the paid models, and the overfit it nearly caused, 15 September 2026
+
+Eleven realistic configurations, with the filters, grouping, tenant IDF and the reference hop held constant and only the branches, the fusion and the rescore varying.
+
+| Configuration | 14 disclosed | 31 scored |
+| --- | --- | --- |
+| clause + document + bm25, the worked solution | 81, 12/14 | **93, 30/31** |
+| mxbai + document, RRF weighted 3:1 | **87, 13/14** | 77, 24/31 |
+| mxbai alone | 80, 12/14 | |
+| clause + document + bm25 + splade | 79, 11/14 | |
+| clause + document + mxbai + bm25 | 77, 11/14 | |
+| mxbai + document + bm25 | 74, 11/14 | |
+| clause + document + bm25, DBSF | 72, 10/14 | |
+| mxbai + bm25 | 71, 10/14 | |
+| any configuration, ColBERT rescore | 63, 9/14 | |
+
+**The configuration that looks six points better on the visible board is sixteen points worse on the questions nobody can see.** `mxbai_large_v1` weighted three to one against the document vector reads 87 and solves thirteen of fourteen, including `harbor-cure-before`, which no other configuration has reached. It was stable across three runs and across neighbouring weights, and on the 31 scored questions it collapses to 77 and 24 of 31.
+
+This is the sharpest result the project has produced, and it nearly went into `lab.py`. It is also the argument for the held-out set, made with numbers: a team tuning against fourteen disclosed cases can find a real, reproducible, stable improvement that is a real, reproducible, stable regression. Worth telling the room.
+
+**ColBERT is a trap at every point on the ladder**, costing eighteen points whether it rescores mxbai, mxbai plus BM25, or the three-way fusion. DBSF costs nine against RRF. SPLADE as a fourth branch costs two and lands inside the solution's own run-to-run band.
+
+**The worked solution reads 93 with 30 of 31 solved on the scored set**, against the 87 and 26 of 31 in the ladder table. The difference is the reference hop, which the ladder predates.
+
 ## Open, for the morning
 
 1. ~~**Scope a read-only key to `legal_lab_v2`.**~~ Done. `preflight` reads `legal_lab_v2` and ends with `ready`, and a package built by `ship.py` runs end to end from a clean directory. `legal_lab_v1` stays in place as the rollback: it holds the same 3,653 chunks under the old vector names.

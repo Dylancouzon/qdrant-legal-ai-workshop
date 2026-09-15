@@ -128,6 +128,7 @@ One order of discovery, each rung scored over the 31 questions:
 | group by source family | 82 | 24/31 |
 | add the document-context vector | 83 | 25/31 |
 | scope BM25 statistics to the matter | 87 | 26/31 |
+| follow a reference to its definition | 93 | 30/31 |
 
 A cumulative table flatters whatever comes first. What each lever is worth is a different measurement: switch every other lever on, then switch this one off. Reproduce it with `uv run python -m workshop.bench --levers`.
 
@@ -152,6 +153,7 @@ Say what did not work, because that is the more useful half. Every number here i
 | diversify with MMR | 17 points, six solved questions |
 | weight the fusion 2:2:1 | 3 points |
 | weight the fusion 1:1:3 | 2 points, one solved question |
+| swap in the larger dense model, mxbai | 16 points on the scored set, six solved questions |
 
 Weighted fusion is the interesting one. Weighting the two dense signals above BM25 was worth a question before BM25 statistics were scoped to the matter, and costs three points after it. One lever changed what another lever was worth, which is why the reference fuses unweighted. An authority prior over document type changes nothing once grouping is on.
 
