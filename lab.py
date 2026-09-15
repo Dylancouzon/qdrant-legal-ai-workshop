@@ -1,102 +1,137 @@
-"""THE ONE FILE YOU EDIT.
+"""THE WORKED SOLUTION. Organizer copy, never shipped.
 
-Everything else is fixed. Change this file, run
+Participants receive `scripts/starter_lab.py` as their `lab.py`. This file is
+where that one ends up, and every comment below marks one change and what it
+was worth. Measured on the fourteen-case board: the starter reads 9 to 13, this
+reads 78 to 81 with every visible failure at zero and 11 or 12 of 14 solved.
+The spread is one case whose last two chunks score equally and swap, which is
+the same approximate-search tie the starter shows more loudly.
+
+The two it does not solve are the challenge cases, and they stay shut for a
+reason: the only chunk pointing at the answer to the cure question was replaced
+before the question date, so a correct date filter removes it.
 
     uv run python -m workshop.run score
-
-and watch the score move. The browser at localhost:8000 re-reads this file on
-every run, so you never have to restart it.
-
-The collection is read-only and preloaded. It holds the three client matters
-this lab is about, and several hundred real public contracts belonging to other
-clients. It also holds more representations than this starter asks for; `score`
-prints how many it uses against how many are there.
-
-Keep the signature of retrieve() exactly as it is. The scorer calls it.
-
-New to Qdrant? The two pages that explain the code below are
-https://qdrant.tech/documentation/concepts/hybrid-queries/ for prefetch and
-fusion, and https://qdrant.tech/documentation/concepts/filtering/ for filter
-conditions. AGENTS.md lists what the collection holds. Paste both at your
-coding agent, because it cannot see the Evidence Playbook in the browser.
-
-Every chunk carries these payload fields:
-
-    matter_id          which client the document belongs to
-    effective_from     ISO date, filterable with models.DatetimeRange
-    effective_to       ISO date, 9999-12-31 when nothing replaced it
-    status             operative or superseded
-    instrument_type    agreement, amendment, exhibit, memo, operational_record
-    source_family      copies of one document share this
-    document_id        one per document
-    section_id         the clause number, as a lawyer would cite it
-    heading            the clause heading
-    references         passage ids this clause points at
-
-There are more fields than these. Look before you tune, because both of these
-are allowed and neither is in this file:
-
-    params = client.get_collection(collection).config.params
-    print(params.vectors, params.sparse_vectors)
-    print(client.query_points(collection, limit=1, with_payload=True).points[0])
 """
 
 from qdrant_client import models
 
-# Cloud Inference embeds the query server-side, so no model runs on your laptop.
-# A named vector and the model behind it are two different things: this queries
-# the vector "minilm_l6_clause", which was built with all-MiniLM-L6-v2. The
-# collection carries others. `run score` prints how many, and nothing tells you
-# which of them is worth using except measuring it.
-DENSE_VECTOR = "minilm_l6_clause"
 DENSE_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-SPARSE_VECTOR = "bm25"
 SPARSE_MODEL = "Qdrant/bm25"
 
-CANDIDATES = 5
+# Five candidates per branch left nothing for fusion to fuse. Sixty is worth two
+# points, and worth nothing at all until the BM25 statistics are scoped below.
+CANDIDATES = 60
 LIMIT = 5
 
 
 def build_filter(matter_id, as_of):
-    """Scope the search.
-
-    You are given two facts about every question: which client matter it is
-    about, and the date it is asked on. Both are yours to use here.
-    """
     return models.Filter(
         must=[
+            # The largest single change, worth 64 points: without it another
+            # client's contracts answer the question, which is the confidentiality
+            # failure the whole exercise is built around.
             models.FieldCondition(
-                key="status", match=models.MatchValue(value="operative")
+                key="matter_id", match=models.MatchValue(value=matter_id)
             ),
+            # The starter filtered status == "operative", which reads as obviously
+            # correct and throws away every historical answer. Dropping it is
+            # worth 15 points and six questions.
             models.FieldCondition(
                 key="effective_from", range=models.DatetimeRange(lte=as_of)
             ),
+            # gt, not gte: a clause replaced on 1 April does not govern on 1 April.
+            # Worth two points, and it clears three chunks that were not in effect.
             models.FieldCondition(
-                key="effective_to", range=models.DatetimeRange(gte=as_of)
+                key="effective_to", range=models.DatetimeRange(gt=as_of)
             ),
         ]
     )
 
 
 def retrieve(client, collection, question, matter_id, as_of, limit=LIMIT):
-    """Return ranked chunks for one dated question about one matter.
-
-    Keep this signature. Return a list of ScoredPoint with payloads.
-    """
     query_filter = build_filter(matter_id, as_of)
-    dense = models.Document(text=question, model=DENSE_MODEL)
-    sparse = models.Document(text=question, model=SPARSE_MODEL)
 
-    return client.query_points(
+    # Qdrant 1.19 computes BM25 rarity inside this client's matter instead of
+    # across every client in the shard. Worth four points and three questions.
+    idf = models.SearchParams(
+        idf=models.IdfCorpusParams(
+            corpus=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="matter_id", match=models.MatchValue(value=matter_id)
+                    )
+                ]
+            )
+        )
+    )
+
+    prefetch = [
+        models.Prefetch(
+            query=models.Document(text=question, model=model),
+            using=vector,
+            filter=query_filter,
+            params=idf if vector == "bm25" else None,
+            limit=CANDIDATES,
+        )
+        # The second dense vector is the same model over the document title and
+        # heading as well as the clause. What you embed is a larger lever than
+        # which model you use, and it solves a question nothing else reaches.
+        for vector, model in (
+            ("minilm_l6_clause", DENSE_MODEL),
+            ("minilm_l6_document", DENSE_MODEL),
+            ("bm25", SPARSE_MODEL),
+        )
+    ]
+
+    groups = client.query_points_groups(
         collection,
-        prefetch=[
-            models.Prefetch(query=dense, using=DENSE_VECTOR,
-                            filter=query_filter, limit=CANDIDATES),
-            models.Prefetch(query=sparse, using=SPARSE_VECTOR,
-                            filter=query_filter, limit=CANDIDATES),
-        ],
+        prefetch=prefetch,
+        # Unweighted on purpose. Weighting the dense signals above BM25 gained a
+        # question before the statistics were scoped, and costs three after it.
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         query_filter=query_filter,
+        # One hit per source family, so five forwarded copies of one memo cannot
+        # fill the list. Worth six points and two questions.
+        group_by="source_family",
+        group_size=1,
         limit=limit,
         with_payload=True,
-    ).points
+    ).groups
+    hits = [hit for group in groups for hit in group.hits]
+
+    # A clause that is expressly subject to a definition or an exclusion is half
+    # an answer, and no ranking change ever retrieves the other half. The payload
+    # names it, so fetch it: worth four to seven points and two dependency questions.
+    have = {hit.payload["passage_id"] for hit in hits}
+    wanted = [r for hit in hits for r in hit.payload["references"] if r not in have]
+    if not wanted:
+        return hits[:limit]
+
+    # scroll, because this is a lookup by id with no query vector. Same filter
+    # as the search: a referenced clause that was not in effect on the question
+    # date is still a chunk a lawyer cannot use.
+    referenced, _ = client.scroll(
+        collection,
+        scroll_filter=models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="passage_id", match=models.MatchAny(any=wanted)
+                ),
+                *query_filter.must,
+            ]
+        ),
+        limit=len(wanted),
+        with_payload=True,
+    )
+
+    # Each referenced clause sits directly behind the clause that points at it,
+    # so the pair reads as one answer and the weakest results fall off the end.
+    by_id = {point.payload["passage_id"]: point for point in referenced}
+    ordered = []
+    for hit in hits:
+        ordered.append(hit)
+        for ref in hit.payload["references"]:
+            if ref in by_id:
+                ordered.append(by_id.pop(ref))
+    return ordered[:limit]

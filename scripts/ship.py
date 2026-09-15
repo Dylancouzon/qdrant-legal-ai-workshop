@@ -29,7 +29,6 @@ SHIP = [
     ".python-version",
     "pyproject.toml",
     "uv.lock",
-    "lab.py",
     "workshop/run.py",
     "workshop/score.py",
     "workshop/client.py",
@@ -52,7 +51,7 @@ WITHHELD = {
     "workshop/clausebank.py": "organizer only, used at ingest",
     "scripts/panel.py": "plain-text source of the playbook rules",
     "FACILITATOR.md": "the run sheet, with every answer in it",
-    "scripts/reference_lab.py": "the tuned solution",
+    "lab.py": "the worked solution; the starter ships in its place",
     "instructions.md": "the build brief",
     "DECISIONS.md": "the build ledger",
     "experiments.jsonl": "every measured configuration",
@@ -93,6 +92,15 @@ def main():
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
 
+    # The root lab.py is the worked solution. Participants get the starter, and
+    # the organizer note at the top of it does not travel.
+    starter = (ROOT / "scripts/starter_lab.py").read_text()
+    mark = "\nOrganizer note, stripped on the way out:"
+    if mark not in starter:
+        sys.exit("scripts/starter_lab.py lost its organizer note; check ship.py")
+    head, _, rest = starter.partition(mark)
+    (target / "lab.py").write_text(head.rstrip() + "\n\n" + rest.split("\n\n", 1)[1])
+
     # score.py's self-check is organizer verification. It imports corpus and
     # validation, which do not ship, so it raises ModuleNotFoundError on a
     # participant laptop, and it names chunks that are controlling evidence for
@@ -125,7 +133,9 @@ def main():
     # the generated replacement above is the one that ships.
     # questions.py is withheld in its organizer form, then regenerated above.
     # The organizer .env must never reach the participant package.
-    forbidden = set(WITHHELD) - {"workshop/questions.py"}
+    # Both are named in WITHHELD because the organizer version is withheld, and
+    # both are written above from a participant-safe source.
+    forbidden = set(WITHHELD) - {"workshop/questions.py", "lab.py"}
 
     from dotenv import load_dotenv
 
@@ -178,7 +188,7 @@ def main():
         if found:
             sys.exit(f"{path.name} mentions held-out question ids: {found}")
 
-    print(f"shipped {len(SHIP) + 2} files to {target}")
+    print(f"shipped {len(SHIP) + 3} files to {target}")
     print("withheld:")
     for name, why in WITHHELD.items():
         print(f"  {name:28} {why}")

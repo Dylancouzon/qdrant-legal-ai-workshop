@@ -1,4 +1,4 @@
-"""The published dimensions, scored against the rubric in validation.py.
+"""The published dimensions, scored against the graded chunks each case names.
 
 coverage   Share of the controlling chunks that were retrieved. Two controlling
            chunks means retrieving one earns one half. Printed as a fraction,

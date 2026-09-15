@@ -271,7 +271,8 @@ def parity():
     participants receive. If those two ever diverge, every number in the log is
     a claim about code nobody runs.
     """
-    current = lab()
+    # The starter, which is what ship.py hands participants.
+    current = lab(Path(__file__).resolve().parents[1] / "scripts/starter_lab.py")
     qc, name = connect(write=True), collection()
     # Compare at depth 20. At depth 5 the cut lands inside a run of equally
     # scored chunks, so which one survives is arbitrary and tells us nothing

@@ -18,7 +18,7 @@ Then confirm:
 - The Inference tab in the Cloud Console still lists the models.
 - `OPENAI_API_KEY` belongs to a dedicated project with a hard budget cap. Revoke it and the Qdrant key afterwards.
 - The repo URL is on a card at each table. Typing a URL from a slide in a dark bar is where the first five minutes go.
-- You have a visible 30-minute timer, and `scripts/reference_lab.py` ready to copy over `lab.py` for the reveal.
+- You have a visible 30-minute timer. The root `lab.py` is already the worked solution, so the reveal is a `cd` into this repository rather than a file swap.
 
 ## What you need to understand
 
@@ -80,7 +80,7 @@ The browser opens on the agent. A question goes in, the answer comes out, and th
 
 Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, and they are scored anyway, so the board does not top out at 100. A team reads its number against a real ceiling instead of against a set with the hard cases taken out, and a team that finds a route we did not gets credit for it.
 
-Expect the first run to read 3 or 4 of 14, with 34 to 39 chunks from the wrong client, and a score between 9 and 13. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a few points apart. The matter filter clears every wrong-client chunk and takes the board to 40, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens. The reference solution reads 74. It is not a ceiling: adding a second hop that follows the `references` payload field reaches 77 and solves two more cases, and both challenge cases stay shut because the date filter removes the only chunk that points at the answer. If a team calls out a number above 74, ask how they got it. The honest answer is a reference hop; the dishonest one is fetching the graded ids out of `workshop/questions.py`, which the rules now forbid and which `ask for their lab.py` catches.
+Expect the first run to read 3 or 4 of 14, with 34 to 39 chunks from the wrong client, and a score between 9 and 13. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a few points apart. The matter filter clears every wrong-client chunk and takes the board to 40, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens. The worked solution in this repository reads 81 with every failure count at zero and 12 of 14 solved. Seven of those points are a second query that follows the `references` payload field, which solves two dependency questions that no ranking change reaches. Both challenge cases stay shut, because the date filter removes the only chunk pointing at the cure answer. If a team calls out a number above 81, ask how they got it. The rules forbid fetching the graded ids out of `workshop/questions.py`, and asking for their `lab.py` is the only enforcement there is.
 
 Walk the room. Prompts that unstick people without giving anything away:
 
@@ -107,7 +107,7 @@ uv run python -m workshop.run answer "Are we cleared to build with the new 8841-
 
 Five results come back and all five have the same title. The agent answers "not on the documents provided", because the memos point at an Engineering Change Notice and a Supply Agreement section it was never given, and it says so. Stop and let the room read the five identical lines.
 
-Now copy `scripts/reference_lab.py` over `lab.py` and run the identical command. Same question, same agent, same model.
+Now run the identical command from this repository, whose `lab.py` is the worked solution. Same question, same agent, same model.
 
 > No, Atlas Robotics is not cleared to build with the 8841-C connector. Engineering Change Notice 114 requires a passing first article inspection of thirty units and written confirmation from the quality engineer before production [1], and the quality memorandum records that the inspection failed and no confirmation was issued [2]. The internal line readiness note does not change this.
 

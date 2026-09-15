@@ -234,6 +234,14 @@ Codex reviewed the participant tree as a learner with thirty minutes. Three find
 
 **Stale rather than live.** Codex read the open item above about the `legal_lab_v1` key scope and reported it as a live blocker. It was closed and the ledger had not said so. An open-items list nobody closes turns into a false alarm for the next reader.
 
+## The worked solution moves into lab.py, 15 September 2026
+
+**The root `lab.py` is now the solution, and `scripts/starter_lab.py` is what participants receive.** `ship.py` wrote `lab.py` verbatim from the repository root, so a tuned root file would have handed the answer to every laptop in the room on the next rebuild. The starter now lives under `scripts/`, `ship.py` writes it to the participant tree as `lab.py` and strips its organizer note on the way, and it fails loudly if that note is missing. `scripts/reference_lab.py` is deleted, because the root file is the reference and two names for one thing drift apart. `bench --parity` reads the starter explicitly rather than whatever sits at the root.
+
+**A second query that follows `references` is worth seven points.** Measured by switching it off: 81 against 74, and 12 of 14 solved against 10. It solves `cedar-service-credit` and `atlas-substitution-approved`, both of which need a clause and the definition it points at, and no ranking change reaches the second chunk on either. The payload has always carried the field and nothing in the measured ladder had ever used it. The published ceiling moved from 74 to 81 in the README, `AGENTS.md`, and the run sheet.
+
+Both challenge cases stay unsolved, and they are genuinely shut rather than merely hard: the only chunk pointing at the answer to the cure question was replaced before the question date, so a correct date filter removes it.
+
 ## Open, for the morning
 
 1. ~~**Scope a read-only key to `legal_lab_v2`.**~~ Done. `preflight` reads `legal_lab_v2` and ends with `ready`, and a package built by `ship.py` runs end to end from a clean directory. `legal_lab_v1` stays in place as the rollback: it holds the same 3,653 chunks under the old vector names.

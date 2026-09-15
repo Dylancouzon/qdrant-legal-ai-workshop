@@ -17,7 +17,7 @@ Run `uv run python -m workshop.run score`. It scores fourteen cases and prints, 
 
 Change one thing in `lab.py`, run `score`, keep the change if the numbers improve. That is the whole method.
 
-Two cases are marked with `*`. No configuration anyone has tried retrieves their evidence, and they are scored like the rest, so the best total we measured is 77 rather than 100. Do not read a total below 100 as a bug.
+Two cases are marked with `*`. No configuration anyone has tried retrieves their evidence, and they are scored like the rest, so the best total we measured is 81 rather than 100. Do not read a total below 100 as a bug.
 
 ## Facts about the collection you would otherwise have to discover
 
