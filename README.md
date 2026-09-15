@@ -27,7 +27,7 @@ You edit one file, `lab.py`. Everything else is fixed.
 uv run python -m workshop.app     # then open http://localhost:8000 yourself
 ```
 
-Leave that terminal running and use a second one for the commands below. The first screen is the answering agent. Pick a case, read the answer, then read the five chunks the answer was built from. Each chunk names the client whose file it came from and the dates it was in effect. Decide what looks unsafe or incomplete, change one retrieval choice in `lab.py`, and run again. The app re-reads that file every time, so leave it open.
+Leave that terminal running and use a second one for the commands below. The first screen is the answering agent. Pick a case, read the answer, then read the five chunks the answer was built from. Each chunk names the client whose file it came from and the dates it was in effect. Decide what looks unsafe or incomplete, change one retrieval choice in `lab.py`, and run again. The app re-reads that file every time, so leave it open. Opening a case on the board shows the client's question and the five chunks that came back for it.
 
 The browser also carries the Evidence Playbook, which is the legal half of this exercise. It renders only there. Read it before you tune.
 
@@ -70,7 +70,7 @@ The run's score is the mean of the case scores. Every term is a share of somethi
 
 Until you scope the search, the score moves a point or two between identical runs. The starter searches all 3,653 chunks, and approximate search returns a slightly different set each time. Do not chase it.
 
-The twelve calibration cases teach you the rubric. They are not the questions you are scored on, and the held-out set is revealed at the end. Two more cases sit at the bottom of the board as challenges. Nothing we tried reaches their evidence, so they are never scored. Solve one and the column turns.
+The twelve calibration cases teach you the rubric. They are not the questions you are scored on, and the held-out set is revealed at the end. Two cases carry a challenge tag. Nothing we tried reaches their evidence, so they are never scored. Solve one and the column turns.
 
 ## Coding Agents
 
