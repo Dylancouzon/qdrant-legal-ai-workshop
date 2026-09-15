@@ -8,7 +8,7 @@ This is a timed retrieval-tuning exercise. A person has thirty minutes. Do not s
 
 ## What you are optimising
 
-Run `uv run python -m workshop.run score`. It prints, per case and in total:
+Run `uv run python -m workshop.run score`. It scores fourteen cases and prints, per case and in total:
 
 - `evidence found`, the controlling chunks retrieved out of the number the case needs. This is the primary score.
 - `graded ranking`, NDCG at rank 5 over the graded results. Tiebreaker. It is not independent of coverage: a missing controlling chunk lowers it too.
@@ -16,6 +16,8 @@ Run `uv run python -m workshop.run score`. It prints, per case and in total:
 - `score`, out of 100: `100 x (0.75 x evidence found + 0.25 x graded ranking)`, times the usable share of the five slots. Each visible failure wastes the slot it sits in, and a slot with two faults at once still costs one slot. The run's score is the mean of the case scores.
 
 Change one thing in `lab.py`, run `score`, keep the change if the numbers improve. That is the whole method.
+
+Two cases are marked with `*`. No configuration anyone has tried retrieves their evidence, and they are scored like the rest, so the best known total is 74 rather than 100. Do not read a total below 100 as a bug.
 
 ## Facts about the collection you would otherwise have to discover
 

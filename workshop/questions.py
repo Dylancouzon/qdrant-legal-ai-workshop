@@ -14,10 +14,11 @@ HEADROOM    No permitted configuration retrieves the controlling evidence for
             and moves these, that is a measurement, not a belief.
 SCORED      Everything else. At least one configuration reaches the evidence,
             so effort can pay.
-CALIBRATION A disclosed subset of SCORED, picked so the numbers move when a
-            change helps. It carries eight questions that flip across the lever
-            ladder and four that the starter already solves, so a first run is
-            not a column of zeroes.
+CALIBRATION The disclosed set, picked so the numbers move when a change helps.
+            Eight questions flip across the lever ladder, four are already
+            solved by the starter so a first run shows something working, and
+            two are unreachable and scored anyway, so the board's ceiling sits
+            below 100 and says so.
 
 A calibration set that stops discriminating is worse than none, because it
 tells a team their change did nothing when it did.
@@ -79,18 +80,22 @@ _ALREADY_SOLVED = [
     "atlas-inspection-result",
 ]
 
-CALIBRATION_IDS = _RESPONSIVE + _ALREADY_SOLVED
-# Two ceiling probes, shown with the calibration set and never counted.
-PROBE_IDS = ["harbor-cure-before", "harbor-liability-cap"]
+# Two unreachable cases, scored with the rest. A team reads its number against a
+# ceiling below 100 rather than against a set with the hard cases taken out,
+# which is the honest way to say that some evidence is out of reach today.
+CHALLENGE_IDS = ["harbor-cure-before", "harbor-liability-cap"]
+CALIBRATION_IDS = _RESPONSIVE + _ALREADY_SOLVED + CHALLENGE_IDS
 
 HEADROOM = [x for x in ALL if x["question_id"] in HEADROOM_IDS]
+# The ranked set leaves every unreachable case out, because ranking teams on a
+# question nobody can solve adds the same zero to everyone.
 SCORED = [x for x in ALL if x["question_id"] not in HEADROOM_IDS]
-CALIBRATION = [x for x in SCORED if x["question_id"] in CALIBRATION_IDS]
-PROBES = [x for x in ALL if x["question_id"] in PROBE_IDS]
+CALIBRATION = [x for x in ALL if x["question_id"] in CALIBRATION_IDS]
+CHALLENGES = [x for x in ALL if x["question_id"] in CHALLENGE_IDS]
 HELD_OUT = [x for x in SCORED if x["question_id"] not in CALIBRATION_IDS]
 
 assert len(HEADROOM) == len(HEADROOM_IDS), "unknown id in HEADROOM_IDS"
 assert len(CALIBRATION) == len(CALIBRATION_IDS), "unknown id in CALIBRATION_IDS"
-assert len(PROBES) == len(PROBE_IDS), "unknown id in PROBE_IDS"
-assert set(PROBE_IDS) <= set(HEADROOM_IDS), "a probe must be unreachable, or score it"
-assert len(SCORED) == len(CALIBRATION) + len(HELD_OUT)
+assert len(CHALLENGES) == len(CHALLENGE_IDS), "unknown id in CHALLENGE_IDS"
+assert set(CHALLENGE_IDS) <= set(HEADROOM_IDS), "a challenge is an unreachable case"
+assert len(SCORED) == len([x for x in CALIBRATION if x not in CHALLENGES]) + len(HELD_OUT)

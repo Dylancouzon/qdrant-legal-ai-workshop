@@ -26,7 +26,7 @@ from qdrant_client import models
 from . import agent
 from .display import client_name
 from .client import collection, connect, lab, representations
-from .questions import CALIBRATION as QUESTIONS, MATTERS, PROBES
+from .questions import CALIBRATION as QUESTIONS, CHALLENGE_IDS, MATTERS
 from .score import remember, score_all, K
 
 TODAY = datetime.date.today().isoformat()
@@ -53,7 +53,9 @@ def score(args):
     run = lambda q, m, d: [p.payload for p in current.retrieve(qc, name, q, m, d, limit=K)]
     result = score_all(QUESTIONS, run)
     previous = remember(result)
-    print(f"\ncalibration set, {len(QUESTIONS)} questions, top {K}\n")
+    print(f"\ncalibration set, {len(QUESTIONS)} questions, top {K}. Two are marked "
+          f"challenge:\nnothing we have tried reaches their evidence, so the ceiling is "
+          f"below 100.\n")
     head = (f"{'case':30} {'score':>5} {'was':>5} {'evidence found':>14} "
             f"{'graded ranking':>14} {'wrong client':>13} {'not in effect':>14} "
             f"{'duplicate':>9}")
@@ -64,8 +66,9 @@ def score(args):
     was = lambda qid: (previous or {}).get(qid)
     for row in result["rows"]:
         before = was(row["question_id"])
+        mark = " *" if row["question_id"] in CHALLENGE_IDS else "  "
         print(
-            f"{row['question_id']:30} {row['score']:5} "
+            f"{row['question_id']:28}{mark} {row['score']:5} "
             f"{'' if before is None or before == row['score'] else before:>5} "
             f"{row['found']:>7}/{row['controlling']:<6} "
             f"{row['ranking']:14.2f} {row['tenant_leaks']:13} {row['temporal_violations']:14} "
@@ -81,13 +84,6 @@ def score(args):
     print(f"\nSCORE {result['score']} out of 100, the mean of the case scores. Each case is "
           f"its evidence found and its graded ranking,\nover the share of the five slots a lawyer could "
           f"use. One chunk from another client costs a fifth of that case.")
-    probes = score_all(PROBES, run, k=K)
-    print("\nshown, not scored. No configuration we have tried reaches the evidence for "
-          "these two, so nobody is ranked on them.")
-    for row in probes["rows"]:
-        print(f"  {row['question_id']:28} {row['coverage']:6.2f}  missing "
-              f"{', '.join(row['missing'])}")
-
     print(
         "\nscore           this case out of 100: evidence found and graded ranking, over the\n"
         "                usable slots\n"
@@ -99,6 +95,7 @@ def score(args):
         "not in effect   this client's chunks that were not in effect on the question date\n"
         "duplicate       rank slots taken by a repeat copy of a document you already returned\n"
         "missing         the controlling chunks this case needed and you did not return\n"
+        "*               a challenge case, scored like the rest and not yet solved by anyone\n"
         "\nA slot with two faults at once, such as a second copy of another client's memo,\n"
         "costs one slot rather than two. Until you scope the search, the score moves a point\n"
         "or two between identical runs, because approximate search over the whole collection\n"

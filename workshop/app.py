@@ -12,10 +12,11 @@ answer looks the same whether or not the evidence was safe, so a person has to
 read the evidence. The playbook panel is the other reason this exists, because
 the applicability rules render here and appear nowhere in the repository.
 
-Measurement is one click away, not first. The board scores the twelve supplied
-cases and carries the two challenges in the same list. A row opens on the
-client's question and the chunks that came back for it. It re-reads lab.py on
-every run, so an edit lands without restarting the server.
+Measurement is one click away, not first. The board scores every supplied case,
+including the two challenges nothing has solved yet, so the ceiling it reports
+sits below 100 and says so. A row opens on the client's question and the chunks
+that came back for it. It re-reads lab.py on every run, so an edit lands without
+restarting the server.
 """
 
 import datetime
@@ -27,7 +28,7 @@ from . import agent
 from .display import client_name
 from .client import collection, connect, lab, representations
 from .playbook import SECTIONS
-from .questions import CALIBRATION, MATTERS, PROBES
+from .questions import CALIBRATION, CHALLENGE_IDS, MATTERS
 from .score import remember, score_all, K
 
 PORT = 8000
@@ -73,10 +74,9 @@ body {
   font-weight: 400; line-height: 1.55;
 }
 header { background: var(--ink); color: var(--paper); padding: 16px 24px 18px; }
-header .brand { color: #9B9BB0; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
-header .brand::before { content: ""; display: inline-block; width: 8px; height: 8px;
-  border-radius: 50%; background: var(--amaranth); margin-right: 9px; }
-header h1 { font-size: 21px; font-weight: 500; margin: 5px 0 0; letter-spacing: -0.02em; }
+header h1 { font-size: 21px; font-weight: 500; margin: 0; letter-spacing: -0.02em; }
+header h1::before { content: ""; display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--amaranth); margin-right: 10px; vertical-align: middle; }
 header .frame { color: #9B9BB0; font-size: 12.5px; margin: 7px 0 0; max-width: 780px; }
 main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 26px;
   padding: 22px 24px; max-width: 1240px; margin: 0 auto; }
@@ -176,9 +176,8 @@ aside .intro { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
 PAGE = """<title>Legal Retrieval Lab</title>
 <style>%(style)s</style>
 <header>
-  <div class="brand">Qdrant Legal Retrieval Lab</div>
-  <h1>The Agent Can Only Answer From What You Retrieve</h1>
-  <p class="frame">You run retrieval at the firm, whose store holds every client's files.</p>
+  <h1>Qdrant Legal Retrieval Lab</h1>
+  <p class="frame">You run retrieval at a law firm that keeps every client's files in one collection.</p>
 </header>
 <main>
   <section>
@@ -190,14 +189,14 @@ PAGE = """<title>Legal Retrieval Lab</title>
           <div class="field"><label for="d">As of</label><input type="date" id="d" value="%(today)s" /></div>
         </div>
         <div class="field"><textarea id="q" placeholder="Ask about this client's contracts"></textarea></div>
-        <p class="micro">Your own questions are never scored. The twelve cases are.</p>
+        <p class="micro">Your own questions are never scored. The supplied cases are.</p>
       </div>
       <div id="thread"></div>
       <div class="actions"><button id="go">Ask the Agent</button></div>
       <div id="out"></div>
       <div class="cta">
-        <span>One answer shows you what broke. Twelve show you how much.</span>
-        <button id="run">Run All 12 Cases</button>
+        <span>One answer shows you what broke. All of them show you how much.</span>
+        <button id="run">Run All %(count)s Cases</button>
       </div>
     </div>
     <div id="boardview" hidden>
@@ -346,18 +345,10 @@ function cells(id) {
     + `<td>${r.ranking.toFixed(2)}</td>` + countCells(r);
 }
 
-function probeCells(id) {
-  const r = scores && scores.probes[id];
-  if (!r) return COLUMNS.map(() => '<td>&mdash;</td>').join('');
-  return `<td class="${r.found === r.controlling ? 'full' : 'micro'}">${
-      r.found === r.controlling ? 'solved' : 'open'}</td>`
-    + `<td class="${r.found === r.controlling ? 'full' : ''}">${r.found} of ${r.controlling}</td>`
-    + `<td>${r.ranking.toFixed(2)}</td>` + countCells(r);
-}
-
 function totalRow() {
   if (!scores) return '';
-  return `<tr class="total"><td class="q"><strong>All twelve scored cases</strong></td>
+  return `<tr class="total"><td class="q"><strong>All ${
+    Object.keys(CASES).length} cases</strong></td>
     <td><b>${scores.score}</b></td><td>${Math.round(scores.coverage * 100)}%%</td>
     <td>${scores.ranking.toFixed(2)}</td>`
     + COUNTS.map(k => `<td class="${scores[k] ? 'bad' : 'none'}">${scores[k]}</td>`).join('')
@@ -370,7 +361,7 @@ function board() {
         CASES[id].probe ? ' <span class="tag">challenge</span>' : ''}
       <small>${esc(CASES[id].matter_name)}, about ${esc(CASES[id].counterparty)}
       &middot; as of ${CASES[id].as_of}</small></td>
-    ${CASES[id].probe ? probeCells(id) : cells(id)}</tr>
+    ${cells(id)}</tr>
     <tr class="detail-row" data-for="${id}" hidden><td class="detail" colspan="7"></td></tr>`;
   // One list, the client's cases together. A challenge sits with its siblings
   // rather than in a section of its own.
@@ -378,8 +369,8 @@ function board() {
     CASES[a].matter_name.localeCompare(CASES[b].matter_name)
     || CASES[a].title.localeCompare(CASES[b].title));
   $('#board').innerHTML = header() + ids.map(row).join('') + totalRow();
-  $('#note').innerHTML = '<p class="micro">A case marked challenge is never scored. '
-    + 'Nothing we tried reaches its evidence.</p>';
+  $('#note').innerHTML = '<p class="micro">A case marked challenge is scored like the rest. '
+    + 'Nothing we have tried reaches its evidence, so the ceiling sits below 100.</p>';
 }
 
 function cards() {
@@ -424,7 +415,7 @@ async function runAll(button) {
   const started = Date.now();
   button.disabled = true;
   const timer = setInterval(() => {
-    $('#runnote').textContent = `Scoring twelve cases \\u00B7 ${Math.floor((Date.now() - started) / 1000)}s`;
+    $('#runnote').textContent = `Scoring ${Object.keys(CASES).length} cases \\u00B7 ${Math.floor((Date.now() - started) / 1000)}s`;
   }, 1000);
   const d = await (await fetch('/api/score')).json();
   clearInterval(timer);
@@ -465,10 +456,9 @@ CASES = {
         "matter_name": MATTERS[x["matter_id"]]["name"],
         "counterparty": MATTERS[x["matter_id"]]["counterparty"],
         "as_of": x["as_of"],
-        "probe": probe,
+        "probe": x["question_id"] in CHALLENGE_IDS,
     }
-    for group, probe in ((CALIBRATION, False), (PROBES, True))
-    for x in group
+    for x in CALIBRATION
 }
 
 PAYLOAD_FIELDS = (
@@ -531,6 +521,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "cases": cases,
             "matters": matters,
             "today": datetime.date.today().isoformat(),
+            "count": len(CASES),
         }).encode()
 
     def ask(self, query):
@@ -577,7 +568,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 p.payload for p in current.retrieve(self.qc, self.name, q, m, d, limit=K)
             ]
             result = score_all(CALIBRATION, run, k=K)
-            probes = score_all(PROBES, run, k=K)
         except Exception as exc:
             return {"error": f"lab.py raised: {type(exc).__name__}: {exc}"}
 
@@ -586,7 +576,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         previous = remember(result)
         payload = {
             "rows": {r["question_id"]: {k: r[k] for k in keep} for r in result["rows"]},
-            "probes": {r["question_id"]: {k: r[k] for k in keep} for r in probes["rows"]},
             "score": result["score"],
             "solved": result["solved"], "questions": result["questions"],
             "coverage": result["coverage"], "ranking": result["ranking"],

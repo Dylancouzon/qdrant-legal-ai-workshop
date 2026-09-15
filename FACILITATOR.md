@@ -78,14 +78,15 @@ Solo or pairs. They edit `lab.py`, which sits at the top of the repository on it
 
 The browser opens on the agent. A question goes in, the answer comes out, and the chunks it was built from sit underneath, each stating its client and its dates. A row opens on the client's question and the five chunks that came back for it. The board reports the same five columns as `run score`. It says how many slots a case wasted and never which chunk wasted them, so a case that found everything in perfect order and still scores 60 sends a team to read its five chunks.
 
-Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, so they are never scored. They are there because a team may find a route we did not.
+Two cases carry a challenge tag and sit in the list with the rest. Nothing we tried reaches their evidence, and they are scored anyway, so the board's ceiling is 74 rather than 100. A team reads its number against a real ceiling instead of against a set with the hard cases taken out, and a team that finds a route we did not gets credit for it.
 
-Expect the first run to read 3 or 4 of 12, with 34 to 37 chunks from the wrong client, and a score between 11 and 16. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a point or two apart. The matter filter clears every wrong-client chunk and takes the calibration score to 46 or 47, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens.
+Expect the first run to read 3 or 4 of 14, with 34 to 38 chunks from the wrong client, and a score between 9 and 12. Quote the range rather than a number: the starter searches all 3,653 chunks, and approximate search returns a slightly different set each run, so two laptops running identical code read a point or two apart. The matter filter clears every wrong-client chunk and takes the board to 40, steadily, because the filter cuts the candidate set to one matter and Qdrant resolves that exactly. After that the curve steepens. The reference solution reads 74, which is the known ceiling on this board.
 
 Walk the room. Prompts that unstick people without giving anything away:
 
 - "Read the top five out loud. Whose contract is that?"
 - "That case found every controlling chunk, in the right order, and scores 60. Open it and tell me where the other 40 went."
+- "Your board says 74 is the best anyone has reached. Which two cases are holding the ceiling down, and why?"
 - "Pick that case at the top of the page and ask the agent. Does the answer say what you would sign your name to?"
 - "Your score line says the code uses two of six representations. What are the other four, and which of them helps?"
 
@@ -154,7 +155,9 @@ Say what did not work, because that is the more useful half. Every number here i
 
 Weighted fusion is the interesting one. Weighting the two dense signals above BM25 was worth a question before BM25 statistics were scoped to the matter, and costs three points after it. One lever changed what another lever was worth, which is why the reference fuses unweighted. An authority prior over document type changes nothing once grouping is on.
 
-Held-out questions live in the organizer repository only, at `workshop/heldout.py`. Score each team's `lab.py` against them, or let people call out their calibration number and take it on trust. The event is honor-based, and saying so out loud costs nothing.
+Nobody submits anything. People call out the number on their own board, which is the 14-case calibration score, and you take it on trust. The event is honor-based, and saying so out loud costs nothing.
+
+The held-out questions stay in the organizer repository at `workshop/heldout.py`. They are what the ladder below was measured on, and they are the reason the calibration set is small: a team tuning against 14 disclosed cases can overfit, and the ladder tells you what the same change is worth across 31. If you want a check on the top team, ask for their `lab.py` and run it yourself.
 
 ## 55 to 60, the debrief
 

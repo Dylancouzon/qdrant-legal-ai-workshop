@@ -201,6 +201,8 @@ Do not name the Qdrant implementation for any principle.
 2. **Graded Ranking (NDCG@5):** did the best evidence come first? Tiebreaker. It also falls when a controlling chunk is missing.
 3. **Drive these to zero:** Wrong Client, Not in Effect, Duplicate.
 
+Two cases are marked challenge. Nobody has reached their evidence, and they are scored anyway, so the ceiling is 74.
+
 ### Notes
 
 Each case scores `100 x (0.75 x evidence found + 0.25 x graded ranking)`, times the share of its five slots a lawyer could use. The run's score is the mean.
@@ -219,7 +221,7 @@ Every term is a share, so two retrievals that return the same quality of evidenc
 2. Ask the agent and read the answer.
 3. Read the five chunks it was built from.
 4. Change one retrieval choice in `lab.py`.
-5. Run all 12 cases, and keep the change only if the score improves.
+5. Run all 14 cases, and keep the change only if the score improves.
 
 ```bash
 uv run python -m workshop.app       # http://localhost:8000
@@ -273,22 +275,6 @@ Visible failures: zero
 ### Notes
 
 Start the timer and stop presenting. Solo or pairs. Walk the room. The unsticking prompts are in the run sheet.
-
----
-
-# Stop and Commit Your Result
-
-### On Screen
-
-Be ready to share:
-
-- One improvement you can defend
-- One failure that remains
-- The evidence for both
-
-### Notes
-
-Stop the timer. Ask everyone to run the calibration set once more. Collect the leading scores, and also find the teams who can explain a real improvement or a real failure. Do not reward score alone.
 
 ---
 
