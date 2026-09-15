@@ -92,12 +92,24 @@ def main():
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
 
+    # score.py's self-check is organizer verification. It imports corpus and
+    # validation, which do not ship, so it raises ModuleNotFoundError on a
+    # participant laptop, and it names chunks that are controlling evidence for
+    # a held-out question. Drop it and keep the scorer itself.
+    scorer = target / "workshop/score.py"
+    text = scorer.read_text()
+    marker = "def demo():"
+    if marker not in text:
+        sys.exit("score.py has no demo() to strip; check ship.py against the scorer")
+    scorer.write_text(text[: text.index(marker)].rstrip() + "\n")
+
     from workshop.questions import CALIBRATION, MATTERS, PROBES
 
-    # The scorer needs the graded chunk ids. It does not need the notes that
-    # say which lever fixes the question; shipping those hands over the ladder
-    # one question at a time.
-    answer_key = {"construction", "rationale", "improvement"}
+    # The scorer reads question, matter_id, as_of, controlling, and supporting.
+    # Everything else is authoring material. The notes hand over the ladder one
+    # question at a time, and the distractor and inapplicable lists name chunks
+    # that are controlling evidence for a held-out question.
+    answer_key = {"construction", "rationale", "improvement", "inapplicable", "distractor"}
     strip = lambda qs: [{k: v for k, v in q.items() if k not in answer_key} for q in qs]
 
     (target / "workshop/questions.py").write_text(
