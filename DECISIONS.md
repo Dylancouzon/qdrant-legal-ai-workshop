@@ -278,6 +278,14 @@ This is the sharpest result the project has produced, and it nearly went into `l
 
 **The worked solution reads 93 with 30 of 31 solved on the scored set**, against the 87 and 26 of 31 in the ladder table. The difference is the reference hop, which the ladder predates.
 
+## The vector menu goes in the starter header, 15 September 2026
+
+This reverses "ship ColBERT without telling anyone". That decision made the strongest lever discoverable rather than guessable, and it was written when nobody knew what the extra vectors were worth. The sweep above settles it: ColBERT costs eighteen points at every point on the ladder, mxbai overfits the disclosed board by sixteen points on the scored set, and SPLADE is a wash. There is no hidden good vector to find. The hunt was for four traps.
+
+So the starter now lists all six with the model behind each and recommends nothing. A person or an agent that reaches for ColBERT, measures, and backs it out has learned the thing the workshop claims to teach, in five minutes rather than twenty-five, and the score still decides.
+
+Rejected on the way: commenting the alternatives in as suggestions, to bait an agent into ColBERT. Deliberately false tips teach "the comments were bait" rather than "measure before you switch", and they spend trust in the same hour the room is asked to trust a scoring rubric. The neutral list gets the same outcome without misleading anyone, and it is the position `vectors.py` already argues for in its own docstring.
+
 ## Open, for the morning
 
 1. ~~**Scope a read-only key to `legal_lab_v2`.**~~ Done. `preflight` reads `legal_lab_v2` and ends with `ready`, and a package built by `ship.py` runs end to end from a clean directory. `legal_lab_v1` stays in place as the rollback: it holds the same 3,653 chunks under the old vector names.
