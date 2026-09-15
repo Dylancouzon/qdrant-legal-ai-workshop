@@ -24,8 +24,11 @@ Two cases are marked with `*`. No configuration anyone has tried retrieves their
 - It is read-only and preloaded. Do not try to write, re-ingest, or re-embed.
 - Every embedding is produced by Qdrant Cloud Inference. No model runs locally. Use `models.Document(text=..., model=...)`.
 - It holds more named vectors than `lab.py` currently queries. `score` prints how many it uses against how many exist. Inspecting the collection is allowed and encouraged. Each name states the model and the text it was built from; none of them states whether it is any good on this corpus, which is a measurement rather than a guess. Two of the six need cluster billing and are empty.
-- Every chunk payload carries: `matter_id`, `effective_from`, `effective_to`, `status`, `instrument_type`, `source_family`, `document_id`, `section_id`, `heading`, `references`.
-- `effective_from` and `effective_to` are ISO dates, filterable with `models.DatetimeRange`.
+- The payload fields that decide retrieval are `matter_id`, `effective_from`, `effective_to`, `status`, `instrument_type`, `source_family`, `document_id`, `section_id`, `heading`, and `references`. There are eighteen in all, so print a point and read them.
+- `effective_from` and `effective_to` are ISO dates, filterable with `models.DatetimeRange`. An open-ended `effective_to` is `9999-12-31`.
+- `status` is `operative` or `superseded`. `instrument_type` is `agreement`, `amendment`, `exhibit`, `memo`, or `operational_record`. `references` holds passage ids.
+- Four vectors are in `config.params.vectors` and two in `config.params.sparse_vectors`. Read both, or you will miss the sparse one this starter already uses.
+- The API behind the starter is documented at https://qdrant.tech/documentation/concepts/hybrid-queries/ and https://qdrant.tech/documentation/concepts/filtering/.
 - The starter searches the whole collection, and approximate search returns a slightly different set each run, so its score moves a point or two between runs. Scoped configurations are steady.
 
 ## Out of scope

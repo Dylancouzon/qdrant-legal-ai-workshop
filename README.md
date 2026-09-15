@@ -45,7 +45,7 @@ The agent gets one retrieval call and no retries, and the three matters are inve
 
 ## The Rules
 
-1. You edit `lab.py` and nothing else.
+1. You edit `lab.py` and nothing else. Its header lists the payload fields and links the two Qdrant pages that explain the starter code.
 2. Keep the signature of `retrieve()` exactly as it is. The scorer calls it.
 3. Query-time Qdrant code only. The collection is read-only and preloaded.
 4. Do not rewrite the question. The agent makes one call and never tries again, so the answer is only ever as good as what `retrieve()` returned.

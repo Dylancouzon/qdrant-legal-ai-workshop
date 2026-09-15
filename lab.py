@@ -13,6 +13,32 @@ clients. It also holds more representations than this starter asks for; `score`
 prints how many it uses against how many are there.
 
 Keep the signature of retrieve() exactly as it is. The scorer calls it.
+
+New to Qdrant? The two pages that explain the code below are
+https://qdrant.tech/documentation/concepts/hybrid-queries/ for prefetch and
+fusion, and https://qdrant.tech/documentation/concepts/filtering/ for filter
+conditions. AGENTS.md lists what the collection holds. Paste both at your
+coding agent, because it cannot see the Evidence Playbook in the browser.
+
+Every chunk carries these payload fields:
+
+    matter_id          which client the document belongs to
+    effective_from     ISO date, filterable with models.DatetimeRange
+    effective_to       ISO date, 9999-12-31 when nothing replaced it
+    status             operative or superseded
+    instrument_type    agreement, amendment, exhibit, memo, operational_record
+    source_family      copies of one document share this
+    document_id        one per document
+    section_id         the clause number, as a lawyer would cite it
+    heading            the clause heading
+    references         passage ids this clause points at
+
+There are more fields than these. Look before you tune, because both of these
+are allowed and neither is in this file:
+
+    params = client.get_collection(collection).config.params
+    print(params.vectors, params.sparse_vectors)
+    print(client.query_points(collection, limit=1, with_payload=True).points[0])
 """
 
 from qdrant_client import models
