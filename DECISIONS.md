@@ -242,11 +242,23 @@ Codex reviewed the participant tree as a learner with thirty minutes. Three find
 
 Both challenge cases stay unsolved, and they are genuinely shut rather than merely hard: the only chunk pointing at the answer to the cure question was replaced before the question date, so a correct date filter removes it.
 
+## The paid models land, and the model was the ceiling after all, 15 September 2026
+
+**The cluster moved to a paid plan and `ingest` filled the last two vectors.** All six representations now carry 3,653 chunks. `ingest` without `--recreate` upserts, so nothing was rebuilt, and it took four minutes.
+
+**The stronger dense model makes the board worse, and that is the interesting half.** Measured on the worked solution: swapping `mxbai_large_v1` in for `minilm_l6_clause` reads 75, adding it as a fourth fusion branch reads 77, against 78 to 81 for the solution that leaves it alone. Adding `splade_pp_v1` as a fourth branch reads 79, inside the same band. Nobody should switch to the big model because it is the big model, which is the habit `vectors.py` was named to break.
+
+**And yet the model was the ceiling for two questions.** `mxbai_large_v1` queried alone, with the matter and date filters and no fusion, retrieves the controlling evidence for `harbor-cure-before` and `cedar-uplift-promotional`, both at rank five, both at full coverage. No other configuration has ever reached either. This closes open item 4: for these two the ceiling was the embedding, not the interface, and the honest test named in `questions.py` has now run.
+
+That leaves a decision rather than a fix. `harbor-cure-before` is one of the two cases the board marks challenge and tells participants nobody has solved. It is solvable, by a configuration that scores worse everywhere else, which is a better lesson than the one currently on the board and a worse fit for the wording. `cedar-uplift-promotional` sits in `HEADROOM_IDS`, which `questions.py` says must not hold a question that became reachable. Both need Dylan's call before the numbers are republished.
+
+**`preflight` no longer reads constants out of `lab.py`.** It checked inference by looking up `DENSE_VECTOR` and `SPARSE_VECTOR` in the participant's file, so renaming a constant broke the health check that exists to explain breakage. The two model ids are fixed in `run.py` now, and `lab.retrieve` is still called at the end as the real check.
+
 ## Open, for the morning
 
 1. ~~**Scope a read-only key to `legal_lab_v2`.**~~ Done. `preflight` reads `legal_lab_v2` and ends with `ready`, and a package built by `ship.py` runs end to end from a clean directory. `legal_lab_v1` stays in place as the rollback: it holds the same 3,653 chunks under the old vector names.
-2. **Attach billing to the cluster.** It unblocks two of the six representations, `mxbai_large_v1` and `splade_pp_v1`, and is the only untested lever plausibly able to move the six headroom questions. Cost is real but negligible: about 8k tokens to ingest and roughly 60k tokens for a full room, well under a cent at the Mixedbread rate.
+2. ~~**Attach billing to the cluster.**~~ Done on 15 September. Both vectors are loaded, and the measurement is in the section above.
 3. **Keep the read-only key read-only.** `client.py` falls back to the write key when `QDRANT_READONLY_API_KEY` is empty. Thirty laptops must not hold a key that can delete the collection.
-4. **"The model is your ceiling" is not yet proven.** Ranks 8 to 23 show the evidence is in first-stage recall; they do not prove an embedding ceiling rather than a top-5, fusion, or interface ceiling. Do not put it on a slide until the Mixedbread measurement exists.
+4. ~~**"The model is your ceiling" is not yet proven.**~~ Measured on 15 September. It is true for exactly two questions and false for the board as a whole, which is a sharper story than either claim on its own. See the section above.
 5. **Rehearse it.** Play the workshop solo and in a pair, and run a coding agent against the shipped tree unattended for thirty minutes and score it. If the agent alone reaches most of what a person reaches, the legal reasoning is decorative and the questions need rebalancing. The tooling for that test is already here: `scripts/ship.py` builds the tree, `workshop/bench.py` scores anything.
 6. **The corpus runs slightly denser than the five-second bar.** Clauses average four sentences. The playbook rules hit the bar; chunks such as `harbor-cure` take ten to fifteen seconds. Worth one trimming pass if there is time, and harmless if there is not.

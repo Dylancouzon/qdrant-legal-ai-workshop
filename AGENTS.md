@@ -25,7 +25,7 @@ Read the header of `lab.py` first. It lists the payload fields, their values, an
 
 - It is read-only and preloaded. Do not try to write, re-ingest, or re-embed.
 - Every embedding is produced by Qdrant Cloud Inference. No model runs locally. Use `models.Document(text=..., model=...)`.
-- It carries more named vectors than `lab.py` queries. Each name states the model and the text it was built from, and none of them states whether it is any good on this corpus, which is a measurement rather than a guess. Two of the six are empty.
+- It carries more named vectors than `lab.py` queries. Each name states the model and the text it was built from, and none of them states whether it is any good on this corpus, which is a measurement rather than a guess. All six carry vectors for every chunk.
 - The starter searches the whole collection, and approximate search returns a slightly different set each run, so its score moves a few points. Scoped configurations are steady.
 
 ## Out of scope

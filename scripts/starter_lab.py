@@ -14,7 +14,7 @@ every run, so you never have to restart it.
 The collection is read-only and preloaded. It holds the three client matters
 this lab is about, and several hundred real public contracts belonging to other
 clients. It also holds more representations than this starter asks for; `score`
-prints how many it uses against how many are there.
+prints how many it uses against how many are there, and all of them are loaded.
 
 Keep the signature of retrieve() exactly as it is. The scorer calls it.
 
