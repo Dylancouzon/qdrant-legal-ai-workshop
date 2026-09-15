@@ -149,10 +149,10 @@ def main():
             install(ROOT, password)
         except ValueError as exc:
             sys.exit(f"Setup failed: {exc}")
-        print("Credentials unlocked. The local .env file is excluded from Git.")
+        print("Credentials unlocked. The local .env file is excluded from Git.", flush=True)
 
     if not args.no_preflight:
-        print("\nChecking the workshop connection...\n")
+        print("\nChecking the workshop connection...\n", flush=True)
         result = subprocess.run([sys.executable, "-m", "workshop.run", "preflight"], cwd=ROOT)
         raise SystemExit(result.returncode)
 
